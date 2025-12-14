@@ -1588,7 +1588,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
       let options = {
         mimeType: 'video/mp4;codecs=avc1',
-        videoBitsPerSecond: 200000000 // 25Mbps -> 200Mbps로 증가
+        videoBitsPerSecond: 100000000 // 25Mbps -> 200Mbps로 증가
       };
 
       let fileExtension = 'mp4';
@@ -1596,13 +1596,13 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
       if (!MediaRecorder.isTypeSupported(options.mimeType)) {
         options.mimeType = 'video/webm;codecs=vp9';
-        options.videoBitsPerSecond = 200000000; // WebM도 동일하게 증가
+        options.videoBitsPerSecond = 100000000; // WebM도 동일하게 증가
         fileExtension = 'webm';
         mimeType = 'video/webm';
 
         if (!MediaRecorder.isTypeSupported(options.mimeType)) {
           options.mimeType = 'video/webm;codecs=vp8';
-          options.videoBitsPerSecond = 200000000;
+          options.videoBitsPerSecond = 100000000;
         }
       }
 
