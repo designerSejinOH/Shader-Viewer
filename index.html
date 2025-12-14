@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shader Viewer by Sejin Oh</title>
+    <title>Shader Viewer for Yewon</title>
     <style>
         * {
             margin: 0;
@@ -31,10 +31,27 @@
             border-right: 1px solid #333;
         }
 
+        #editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
         #controls {
             background: #252526;
             padding: 10px;
             border-bottom: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
         #controls button {
@@ -85,6 +102,121 @@
             outline: none;
         }
 
+        /* 카드 슬라이더 */
+        #cards-container {
+            background: #252526;
+            border-top: 1px solid #333;
+            padding: 12px 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            white-space: nowrap;
+        }
+
+        #cards-slider {
+            display: inline-flex;
+            gap: 12px;
+            padding: 0 12px;
+        }
+
+        .shader-card {
+            display: inline-block;
+            width: 160px;
+            height: 120px;
+            background: #1e1e1e;
+            border: 2px solid #3c3c3c;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            vertical-align: top;
+            flex-shrink: 0;
+        }
+
+        .shader-card:hover {
+            border-color: #0e639c;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .shader-card.active {
+            border-color: #4ec9b0;
+            background: #2d2d30;
+        }
+
+        .shader-card.add-card {
+            border: 2px dashed #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: #858585;
+        }
+
+        .shader-card.add-card:hover {
+            border-color: #0e639c;
+            color: #d4d4d4;
+        }
+
+        .card-preview {
+            width: 100%;
+            height: 60px;
+            background: #0a0a0a;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .card-preview canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .card-name {
+            font-size: 12px;
+            color: #d4d4d4;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-bottom: 4px;
+        }
+
+        .card-date {
+            font-size: 10px;
+            color: #858585;
+        }
+
+        .card-delete {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(217, 83, 79, 0.9);
+            color: white;
+            border: none;
+            border-radius: 3px;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            line-height: 1;
+            display: none;
+        }
+
+        .shader-card:hover .card-delete {
+            display: block;
+        }
+
+        .card-delete:hover {
+            background: #c9302c;
+        }
+
+        .add-icon {
+            font-size: 32px;
+            margin-bottom: 4px;
+        }
+
         #viewer-panel {
             width: 50%;
             display: flex;
@@ -131,26 +263,51 @@
 <body>
     <div id="container">
         <div id="editor-panel">
-            <div id="controls">
-                <button id="compile-btn">컴파일 (Ctrl+Enter)</button>
-                <button id="reset-btn">리셋</button>
-                <br><br>
-                <label>해상도:</label>
-                <input type="number" id="width" value="1920" min="256" max="7680" step="1">
-                <span>×</span>
-                <input type="number" id="height" value="1080" min="256" max="4320" step="1">
-                <button id="apply-res-btn">적용</button>
-                <br><br>
-                <label>FPS:</label>
-                <select id="fps">
-                    <option value="30">30</option>
-                    <option value="60" selected>60</option>
-                    <option value="120">120</option>
-                </select>
-                <button id="record-btn">녹화 시작</button>
-                <button id="download-btn" style="display: none;">다운로드</button>
-            </div>
-            <textarea id="shader-code" spellcheck="false">// Shadertoy 스타일 쉐이더
+            <div id="editor-container">
+                <div id="controls">
+                    <div class="control-row">
+                        <button id="compile-btn">컴파일 (Ctrl+Enter)</button>
+                        <button id="reset-btn">시간 리셋</button>
+                    </div>
+
+                    <div class="control-row">
+                        <label>해상도:</label>
+                        <input type="number" id="width" value="1920" min="256" max="7680" step="1">
+                        <span>×</span>
+                        <input type="number" id="height" value="1080" min="256" max="4320" step="1">
+                        <button id="apply-res-btn">적용</button>
+                    </div>
+
+                    <div class="control-row">
+                        <label>FPS:</label>
+                        <select id="fps">
+                            <option value="30">30</option>
+                            <option value="60" selected>60</option>
+                            <option value="120">120</option>
+                        </select>
+                    </div>
+
+                    <div class="control-row">
+                        <label>녹화 시작 시간:</label>
+                        <input type="number" id="record-start" value="0" min="0" step="0.1" style="width: 80px;">
+                        <span>초</span>
+                        <label style="margin-left: 15px;">녹화 길이:</label>
+                        <input type="number" id="record-duration" value="10" min="0.1" step="0.1" style="width: 80px;">
+                        <span>초</span>
+                        <label style="margin-left: 10px;">
+                            <input type="checkbox" id="auto-stop">
+                            자동 중지
+                        </label>
+                    </div>
+
+                    <div class="control-row">
+                        <button id="record-btn">녹화 시작</button>
+                        <button id="record-reset-btn">0초부터 녹화</button>
+                        <button id="download-btn" style="display: none;">다운로드</button>
+                        <span id="record-status" style="color: #888; margin-left: 10px;"></span>
+                    </div>
+                </div>
+                <textarea id="shader-code" spellcheck="false">
 // WebGL 2.0 GLSL 300 es 지원
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
@@ -173,6 +330,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     
     fragColor = vec4(col, 1.0);
 }</textarea>
+            </div>
+
+            <div id="cards-container">
+                <div id="cards-slider"></div>
+            </div>
         </div>
 
         <div id="viewer-panel">
@@ -210,6 +372,9 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         let mediaRecorder = null;
         let recordedChunks = [];
         let isRecording = false;
+        let recordingStartTime = 0;
+        let recordingTargetDuration = 0;
+        let autoStopEnabled = false;
 
         // 기본 해상도 설정
         function setResolution(width, height) {
@@ -289,6 +454,26 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             return shader;
         }
 
+        // 미리보기용 쉐이더 컴파일 (에러 발생시 null 반환)
+        function compileShaderForPreview(source, type, context) {
+            if (!context) return null;
+
+            try {
+                const shader = context.createShader(type);
+                context.shaderSource(shader, source);
+                context.compileShader(shader);
+
+                if (!context.getShaderParameter(shader, context.COMPILE_STATUS)) {
+                    context.deleteShader(shader);
+                    return null;
+                }
+
+                return shader;
+            } catch (e) {
+                return null;
+            }
+        }
+
         // 프로그램 생성
         function createProgram(userFragmentCode) {
             const vertexShader = compileShader(vertexShaderSource, gl.VERTEX_SHADER);
@@ -344,6 +529,19 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
             const currentTime = (Date.now() - startTime) / 1000.0;
 
+            // 자동 녹화 중지 체크
+            if (isRecording && autoStopEnabled) {
+                const recordingElapsed = currentTime - recordingStartTime;
+                if (recordingElapsed >= recordingTargetDuration) {
+                    stopRecording();
+                }
+
+                // 녹화 상태 표시
+                const remaining = Math.max(0, recordingTargetDuration - recordingElapsed);
+                document.getElementById('record-status').textContent =
+                    `녹화 중... (${recordingElapsed.toFixed(1)}s / ${recordingTargetDuration.toFixed(1)}s)`;
+            }
+
             gl.useProgram(program);
 
             // Uniforms 설정
@@ -378,27 +576,6 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             timeCounter.textContent = currentTime.toFixed(2);
 
             animationId = requestAnimationFrame(render);
-        }
-
-        // 쉐이더 컴파일 및 실행
-        function compileAndRun() {
-            try {
-                const newProgram = createProgram(shaderCode.value);
-
-                if (program) {
-                    gl.deleteProgram(program);
-                }
-
-                program = newProgram;
-                errorDiv.style.display = 'none';
-
-                if (!animationId) {
-                    render();
-                }
-            } catch (error) {
-                errorDiv.textContent = '쉐이더 컴파일 오류:\n' + error.message;
-                errorDiv.style.display = 'block';
-            }
         }
 
         // 초기 컴파일
@@ -436,20 +613,328 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             }
         });
 
+        // LocalStorage 관리
+        const STORAGE_KEY = 'shader-codes';
+        let currentCardId = null;
+
+        function getSavedCodes() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            return saved ? JSON.parse(saved) : [];
+        }
+
+        function setSavedCodes(codes) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(codes));
+        }
+
+        function generateCardName() {
+            const now = new Date();
+            return `Shader ${now.getMonth() + 1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+        }
+
+        // 컴파일 시 자동 저장
+        function compileAndRun() {
+            try {
+                const newProgram = createProgram(shaderCode.value);
+
+                if (program) {
+                    gl.deleteProgram(program);
+                }
+
+                program = newProgram;
+                errorDiv.style.display = 'none';
+
+                if (!animationId) {
+                    render();
+                }
+
+                // 컴파일 성공 시 자동 저장
+                autoSaveCurrentCode();
+
+            } catch (error) {
+                errorDiv.textContent = '쉐이더 컴파일 오류:\n' + error.message;
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        function autoSaveCurrentCode() {
+            const codes = getSavedCodes();
+            const code = shaderCode.value;
+
+            if (currentCardId) {
+                // 기존 카드 업데이트
+                const index = codes.findIndex(c => c.id === currentCardId);
+                if (index !== -1) {
+                    codes[index].code = code;
+                    codes[index].date = new Date().toISOString();
+                    setSavedCodes(codes);
+                    renderCards();
+                    return;
+                }
+            }
+
+            // 새 카드 생성
+            const newCode = {
+                id: Date.now(),
+                name: generateCardName(),
+                code: code,
+                date: new Date().toISOString()
+            };
+
+            codes.push(newCode);
+            setSavedCodes(codes);
+            currentCardId = newCode.id;
+            renderCards();
+        }
+
+        function renderCards() {
+            const codes = getSavedCodes();
+            const slider = document.getElementById('cards-slider');
+
+            // 최신순 정렬
+            codes.sort((a, b) => b.id - a.id);
+
+            slider.innerHTML = codes.map(item => `
+                <div class="shader-card ${item.id === currentCardId ? 'active' : ''}" onclick="loadCard(${item.id})">
+                    <button class="card-delete" onclick="event.stopPropagation(); deleteCard(${item.id})">×</button>
+                    <div class="card-preview" id="preview-${item.id}"></div>
+                    <div class="card-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
+                    <div class="card-date">${formatDate(item.date)}</div>
+                </div>
+            `).join('') + `
+                <div class="shader-card add-card" onclick="createNewCard()">
+                    <div class="add-icon">+</div>
+                    <div>새 쉐이더</div>
+                </div>
+            `;
+
+            // 미리보기 캔버스 생성
+            setTimeout(() => {
+                codes.forEach(item => {
+                    const previewDiv = document.getElementById(`preview-${item.id}`);
+                    if (previewDiv && !previewDiv.querySelector('canvas')) {
+                        createPreviewCanvas(previewDiv, item.code);
+                    }
+                });
+            }, 0);
+        }
+
+        function createPreviewCanvas(container, code) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 160;
+            canvas.height = 60;
+            container.appendChild(canvas);
+
+            try {
+                const ctx = canvas.getContext('webgl2');
+                if (!ctx) {
+                    console.warn('WebGL2 not available for preview');
+                    return;
+                }
+
+                const vertShader = compileShaderForPreview(`#version 300 es
+                    in vec2 position;
+                    void main() {
+                        gl_Position = vec4(position, 0.0, 1.0);
+                    }
+                `, ctx.VERTEX_SHADER, ctx);
+
+                if (!vertShader) return;
+
+                const fragShader = compileShaderForPreview(
+                    buildFragmentShader(code),
+                    ctx.FRAGMENT_SHADER,
+                    ctx
+                );
+
+                if (!fragShader) return;
+
+                const prog = ctx.createProgram();
+                ctx.attachShader(prog, vertShader);
+                ctx.attachShader(prog, fragShader);
+                ctx.linkProgram(prog);
+
+                if (!ctx.getProgramParameter(prog, ctx.LINK_STATUS)) {
+                    return;
+                }
+
+                const buf = ctx.createBuffer();
+                ctx.bindBuffer(ctx.ARRAY_BUFFER, buf);
+                ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), ctx.STATIC_DRAW);
+
+                ctx.useProgram(prog);
+                ctx.uniform2f(ctx.getUniformLocation(prog, 'iResolution'), 160, 60);
+                ctx.uniform1f(ctx.getUniformLocation(prog, 'iTime'), 0);
+                ctx.uniform4f(ctx.getUniformLocation(prog, 'iMouse'), 0, 0, 0, 0);
+                ctx.uniform1i(ctx.getUniformLocation(prog, 'iFrame'), 0);
+
+                const posLoc = ctx.getAttribLocation(prog, 'position');
+                ctx.enableVertexAttribArray(posLoc);
+                ctx.vertexAttribPointer(posLoc, 2, ctx.FLOAT, false, 0, 0);
+
+                ctx.viewport(0, 0, 160, 60);
+                ctx.drawArrays(ctx.TRIANGLES, 0, 3);
+            } catch (e) {
+                console.warn('Preview generation failed:', e);
+            }
+        }
+
+        function compileShaderForPreview(source, type, context) {
+            if (!context) return null;
+
+            try {
+                const shader = context.createShader(type);
+                context.shaderSource(shader, source);
+                context.compileShader(shader);
+
+                if (!context.getShaderParameter(shader, context.COMPILE_STATUS)) {
+                    context.deleteShader(shader);
+                    return null;
+                }
+
+                return shader;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function loadCard(id) {
+            const codes = getSavedCodes();
+            const code = codes.find(c => c.id === id);
+
+            if (code) {
+                shaderCode.value = code.code;
+                currentCardId = id;
+                renderCards();
+                compileAndRun();
+            }
+        }
+
+        function deleteCard(id) {
+            if (!confirm('이 쉐이더를 삭제하시겠습니까?')) return;
+
+            const codes = getSavedCodes();
+            const filtered = codes.filter(c => c.id !== id);
+            setSavedCodes(filtered);
+
+            if (currentCardId === id) {
+                if (filtered.length > 0) {
+                    loadCard(filtered[0].id);
+                } else {
+                    currentCardId = null;
+                    shaderCode.value = '// 새 쉐이더를 작성하세요';
+                }
+            }
+
+            renderCards();
+        }
+
+        function createNewCard() {
+            const newCode = {
+                id: Date.now(),
+                name: generateCardName(),
+                code: '// 새 쉐이더\n\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 uv = fragCoord / iResolution.xy;\n    fragColor = vec4(uv, 0.5, 1.0);\n}',
+                date: new Date().toISOString()
+            };
+
+            const codes = getSavedCodes();
+            codes.push(newCode);
+            setSavedCodes(codes);
+
+            loadCard(newCode.id);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDate(isoString) {
+            const date = new Date(isoString);
+            const now = new Date();
+            const diff = now - date;
+
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            const days = Math.floor(diff / 86400000);
+
+            if (minutes < 1) return '방금 전';
+            if (minutes < 60) return `${minutes}분 전`;
+            if (hours < 24) return `${hours}시간 전`;
+            if (days < 7) return `${days}일 전`;
+
+            return date.toLocaleDateString('ko-KR', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // 초기 카드 렌더링
+        renderCards();
+
+        // 기존 데이터가 있으면 첫 번째 카드 로드
+        const savedCodes = getSavedCodes();
+        if (savedCodes.length > 0) {
+            loadCard(savedCodes[savedCodes.length - 1].id);
+        }
+
         // 녹화 기능
         document.getElementById('record-btn').addEventListener('click', () => {
             if (!isRecording) {
-                startRecording();
+                const startFrom = parseFloat(document.getElementById('record-start').value);
+                startRecordingAt(startFrom);
             } else {
                 stopRecording();
             }
         });
+
+        document.getElementById('record-reset-btn').addEventListener('click', () => {
+            // 시간 리셋하고 즉시 녹화 시작
+            startTime = Date.now();
+            frameCount = 0;
+            startRecordingAt(0);
+        });
+
+        function startRecordingAt(startFrom) {
+            const currentTime = (Date.now() - startTime) / 1000.0;
+
+            autoStopEnabled = document.getElementById('auto-stop').checked;
+            recordingTargetDuration = parseFloat(document.getElementById('record-duration').value);
+
+            // 시작 시간으로 타임라인 이동
+            if (currentTime < startFrom) {
+                // 미래 시간으로 시간 이동
+                startTime = Date.now() - (startFrom * 1000);
+                const waitTime = 0.1; // 즉시 시작 (프레임 대기)
+                document.getElementById('record-status').textContent =
+                    `${startFrom.toFixed(1)}초로 이동 중...`;
+
+                setTimeout(() => {
+                    startRecording();
+                }, waitTime * 1000);
+            } else if (currentTime > startFrom) {
+                // 과거 시간으로 되돌리기
+                startTime = Date.now() - (startFrom * 1000);
+                document.getElementById('record-status').textContent =
+                    `${startFrom.toFixed(1)}초로 이동 중...`;
+
+                setTimeout(() => {
+                    startRecording();
+                }, 100);
+            } else {
+                // 정확히 현재 시간
+                startRecording();
+            }
+        }
 
         function startRecording() {
             const fps = parseInt(document.getElementById('fps').value);
             const stream = canvas.captureStream(fps);
 
             recordedChunks = [];
+            recordingStartTime = (Date.now() - startTime) / 1000.0;
 
             // MP4 (H.264) 시도, 지원 안 하면 WebM으로 폴백
             let options = {
@@ -494,6 +979,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                     a.download = `shader-recording-${Date.now()}.${fileExtension}`;
                     a.click();
                 };
+
+                document.getElementById('record-status').textContent = '녹화 완료!';
+                setTimeout(() => {
+                    document.getElementById('record-status').textContent = '';
+                }, 3000);
             };
 
             mediaRecorder.start();
@@ -502,6 +992,10 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             const recordBtn = document.getElementById('record-btn');
             recordBtn.textContent = '녹화 중지';
             recordBtn.classList.add('recording');
+
+            if (!autoStopEnabled) {
+                document.getElementById('record-status').textContent = '녹화 중...';
+            }
         }
 
         function stopRecording() {
@@ -510,6 +1004,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             }
 
             isRecording = false;
+            autoStopEnabled = false;
 
             const recordBtn = document.getElementById('record-btn');
             recordBtn.textContent = '녹화 시작';
