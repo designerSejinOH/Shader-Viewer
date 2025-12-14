@@ -45,6 +45,8 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
+            max-height: 50vh;
+            overflow-y: auto;
         }
 
         .control-row {
@@ -52,6 +54,59 @@
             align-items: center;
             gap: 8px;
             flex-wrap: wrap;
+        }
+
+        /* 파라미터 컨트롤 */
+        #params-container {
+            background: #1e1e1e;
+            border: 1px solid #3c3c3c;
+            border-radius: 4px;
+            padding: 8px;
+            display: none;
+        }
+
+        #params-container.has-params {
+            display: block;
+        }
+
+        .param-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 6px 0;
+        }
+
+        .param-label {
+            min-width: 100px;
+            font-size: 12px;
+            color: #4ec9b0;
+        }
+
+        .param-slider {
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .param-value {
+            min-width: 50px;
+            text-align: right;
+            font-size: 12px;
+            color: #d4d4d4;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+
+        .param-reset {
+            background: #3c3c3c;
+            color: #d4d4d4;
+            border: none;
+            padding: 2px 8px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+
+        .param-reset:hover {
+            background: #4c4c4c;
         }
 
         #controls button {
@@ -270,6 +325,8 @@
                         <button id="reset-btn">시간 리셋</button>
                     </div>
 
+                    <div id="params-container"></div>
+
                     <div class="control-row">
                         <label>해상도:</label>
                         <input type="number" id="width" value="1920" min="256" max="7680" step="1">
@@ -306,9 +363,22 @@
                         <button id="download-btn" style="display: none;">다운로드</button>
                         <span id="record-status" style="color: #888; margin-left: 10px;"></span>
                     </div>
+                    <!-- <div
+                        style="background-color: rgba(255, 255, 255, 0.2); color: #c8c8c8; font-size: small; padding: 10px; text-align: left;">
+
+                        // #pragma param 이름 최소값 최대값 기본값 [step]
+                        <br>
+                        #pragma param speed 0.0 5.0 1.0 0.1
+                    </div> -->
                 </div>
+
                 <textarea id="shader-code" spellcheck="false">
 // WebGL 2.0 GLSL 300 es 지원
+
+// 파라미터 정의: #pragma param 이름 최소값 최대값 기본값 [step]
+#pragma param speed 0.0 5.0 1.0 0.1
+#pragma param radius 0.1 1.0 0.5 0.01
+#pragma param intensity 0.0 2.0 1.0 0.05
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     // 정규화된 좌표 (0.0 ~ 1.0)
@@ -317,16 +387,16 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     // 중심 기준 좌표 (-1.0 ~ 1.0)
     vec2 p = (2.0 * fragCoord - iResolution.xy) / iResolution.y;
     
-    // 시간에 따라 변하는 색상
-    vec3 col = 0.5 + 0.5 * cos(iTime + uv.xyx + vec3(0, 2, 4));
+    // 시간에 따라 변하는 색상 (speed 파라미터 사용)
+    vec3 col = 0.5 + 0.5 * cos(iTime * speed + uv.xyx + vec3(0, 2, 4));
     
-    // 원 그리기
-    float d = length(p) - 0.5;
-    d = sin(d * 8.0 + iTime) / 8.0;
+    // 원 그리기 (radius와 intensity 파라미터 사용)
+    float d = length(p) - radius;
+    d = sin(d * 8.0 + iTime * speed) / 8.0;
     d = abs(d);
     d = 0.02 / d;
     
-    col *= d;
+    col *= d * intensity;
     
     fragColor = vec4(col, 1.0);
 }</textarea>
@@ -376,6 +446,10 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         let recordingTargetDuration = 0;
         let autoStopEnabled = false;
 
+        // 파라미터 관리
+        let shaderParams = {};
+        let paramUniforms = {};
+
         // 기본 해상도 설정
         function setResolution(width, height) {
             canvas.width = width;
@@ -406,6 +480,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                     uniform vec4 iMouse;
                     uniform int iFrame;
                     
+                    ${generateParamUniforms()}
+                    
                     out vec4 fragColor;
                     
                     ${userCode}
@@ -420,7 +496,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             if (userCode.includes('void main()')) {
                 // GLSL 300 es 버전이 없으면 추가
                 if (!userCode.includes('#version 300 es')) {
-                    return `#version 300 es\n${userCode}`;
+                    return `#version 300 es\n${generateParamUniforms()}\n${userCode}`;
                 }
                 return userCode;
             }
@@ -433,10 +509,99 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                 uniform vec4 iMouse;
                 uniform int iFrame;
                 
+                ${generateParamUniforms()}
+                
                 out vec4 fragColor;
                 
                 ${userCode}
             `;
+        }
+
+        // 파라미터 유니폼 생성
+        function generateParamUniforms() {
+            return Object.keys(shaderParams).map(name => {
+                return `uniform float ${name};`;
+            }).join('\n');
+        }
+
+        // 코드에서 파라미터 추출
+        function parseParameters(code) {
+            const params = {};
+            // #pragma param name min max default [step]
+            const regex = /#pragma\s+param\s+(\w+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)(?:\s+([-\d.]+))?/g;
+            let match;
+
+            while ((match = regex.exec(code)) !== null) {
+                const [, name, min, max, defaultVal, step] = match;
+                params[name] = {
+                    name: name,
+                    min: parseFloat(min),
+                    max: parseFloat(max),
+                    default: parseFloat(defaultVal),
+                    value: parseFloat(defaultVal),
+                    step: step ? parseFloat(step) : (parseFloat(max) - parseFloat(min)) / 100
+                };
+            }
+
+            return params;
+        }
+
+        // 파라미터 UI 생성
+        function updateParameterUI() {
+            const container = document.getElementById('params-container');
+            shaderParams = parseParameters(shaderCode.value);
+
+            if (Object.keys(shaderParams).length === 0) {
+                container.classList.remove('has-params');
+                container.innerHTML = '';
+                return;
+            }
+
+            container.classList.add('has-params');
+            container.innerHTML = '<div style="font-size: 11px; color: #858585; margin-bottom: 8px;">쉐이더 파라미터</div>' +
+                Object.keys(shaderParams).map(name => {
+                    const p = shaderParams[name];
+                    return `
+                        <div class="param-control">
+                            <span class="param-label">${name}</span>
+                            <input type="range" 
+                                   class="param-slider" 
+                                   id="param-${name}"
+                                   min="${p.min}" 
+                                   max="${p.max}" 
+                                   step="${p.step}" 
+                                   value="${p.value}">
+                            <span class="param-value" id="value-${name}">${p.value.toFixed(2)}</span>
+                            <button class="param-reset" onclick="resetParam('${name}')">↺</button>
+                        </div>
+                    `;
+                }).join('');
+
+            // 슬라이더 이벤트 리스너 추가
+            Object.keys(shaderParams).forEach(name => {
+                const slider = document.getElementById(`param-${name}`);
+                const valueDisplay = document.getElementById(`value-${name}`);
+
+                slider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    shaderParams[name].value = value;
+                    valueDisplay.textContent = value.toFixed(2);
+                });
+            });
+        }
+
+        // 파라미터 리셋
+        function resetParam(name) {
+            if (shaderParams[name]) {
+                const defaultVal = shaderParams[name].default;
+                shaderParams[name].value = defaultVal;
+
+                const slider = document.getElementById(`param-${name}`);
+                const valueDisplay = document.getElementById(`value-${name}`);
+
+                if (slider) slider.value = defaultVal;
+                if (valueDisplay) valueDisplay.textContent = defaultVal.toFixed(2);
+            }
         }
 
         // 쉐이더 컴파일
@@ -555,6 +720,14 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             gl.uniform4f(iMouseLoc, mouseX, mouseY, mouseDown ? 1 : 0, 0);
             gl.uniform1i(iFrameLoc, frameCount);
 
+            // 파라미터 유니폼 전달
+            Object.keys(shaderParams).forEach(name => {
+                const loc = gl.getUniformLocation(program, name);
+                if (loc !== null) {
+                    gl.uniform1f(loc, shaderParams[name].value);
+                }
+            });
+
             // Position attribute 설정
             const positionLoc = gl.getAttribLocation(program, 'position');
             gl.enableVertexAttribArray(positionLoc);
@@ -634,6 +807,9 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         // 컴파일 시 자동 저장
         function compileAndRun() {
             try {
+                // 파라미터 UI 업데이트
+                updateParameterUI();
+
                 const newProgram = createProgram(shaderCode.value);
 
                 if (program) {
