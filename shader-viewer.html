@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shader Viewer by Sejin Oh</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Consolas', 'Monaco', monospace;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            overflow: hidden;
+        }
+
+        #container {
+            display: flex;
+            height: 100vh;
+        }
+
+        #editor-panel {
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #333;
+        }
+
+        #controls {
+            background: #252526;
+            padding: 10px;
+            border-bottom: 1px solid #333;
+        }
+
+        #controls button {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            margin-right: 8px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+
+        #controls button:hover {
+            background: #1177bb;
+        }
+
+        #controls button.recording {
+            background: #d9534f;
+        }
+
+        #controls input,
+        #controls select {
+            background: #3c3c3c;
+            color: #d4d4d4;
+            border: 1px solid #555;
+            padding: 6px 10px;
+            margin-right: 8px;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+
+        #controls label {
+            margin-right: 5px;
+            font-size: 13px;
+        }
+
+        #shader-code {
+            flex: 1;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            border: none;
+            padding: 15px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+        }
+
+        #viewer-panel {
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #2d2d30;
+            position: relative;
+        }
+
+        #canvas {
+            max-width: 100%;
+            max-height: 100%;
+            image-rendering: pixelated;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        #error {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(211, 47, 47, 0.9);
+            color: white;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            display: none;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <div id="editor-panel">
+            <div id="controls">
+                <button id="compile-btn">컴파일 (Ctrl+Enter)</button>
+                <button id="reset-btn">리셋</button>
+                <br><br>
+                <label>해상도:</label>
+                <input type="number" id="width" value="1920" min="256" max="7680" step="1">
+                <span>×</span>
+                <input type="number" id="height" value="1080" min="256" max="4320" step="1">
+                <button id="apply-res-btn">적용</button>
+                <br><br>
+                <label>FPS:</label>
+                <select id="fps">
+                    <option value="30">30</option>
+                    <option value="60" selected>60</option>
+                    <option value="120">120</option>
+                </select>
+                <button id="record-btn">녹화 시작</button>
+                <button id="download-btn" style="display: none;">다운로드</button>
+            </div>
+            <textarea id="shader-code" spellcheck="false">// Shadertoy 스타일 쉐이더
+// WebGL 2.0 GLSL 300 es 지원
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+    // 정규화된 좌표 (0.0 ~ 1.0)
+    vec2 uv = fragCoord / iResolution.xy;
+    
+    // 중심 기준 좌표 (-1.0 ~ 1.0)
+    vec2 p = (2.0 * fragCoord - iResolution.xy) / iResolution.y;
+    
+    // 시간에 따라 변하는 색상
+    vec3 col = 0.5 + 0.5 * cos(iTime + uv.xyx + vec3(0, 2, 4));
+    
+    // 원 그리기
+    float d = length(p) - 0.5;
+    d = sin(d * 8.0 + iTime) / 8.0;
+    d = abs(d);
+    d = 0.02 / d;
+    
+    col *= d;
+    
+    fragColor = vec4(col, 1.0);
+}</textarea>
+        </div>
+
+        <div id="viewer-panel">
+            <canvas id="canvas"></canvas>
+            <div id="info">
+                <div>FPS: <span id="fps-counter">0</span></div>
+                <div>시간: <span id="time-counter">0.00</span>s</div>
+                <div>해상도: <span id="resolution-info">1920×1080</span></div>
+            </div>
+            <div id="error"></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const gl = canvas.getContext('webgl2');
+
+        if (!gl) {
+            alert('WebGL 2.0을 지원하지 않는 브라우저입니다. 최신 브라우저를 사용해주세요.');
+            throw new Error('WebGL 2.0 not supported');
+        }
+        const shaderCode = document.getElementById('shader-code');
+        const errorDiv = document.getElementById('error');
+        const fpsCounter = document.getElementById('fps-counter');
+        const timeCounter = document.getElementById('time-counter');
+        const resolutionInfo = document.getElementById('resolution-info');
+
+        let program = null;
+        let startTime = Date.now();
+        let frameCount = 0;
+        let lastFpsTime = Date.now();
+        let currentFps = 0;
+
+        // 녹화 관련 변수
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let isRecording = false;
+
+        // 기본 해상도 설정
+        function setResolution(width, height) {
+            canvas.width = width;
+            canvas.height = height;
+            resolutionInfo.textContent = `${width}×${height}`;
+            gl.viewport(0, 0, width, height);
+        }
+
+        setResolution(1920, 1080);
+
+        // Vertex Shader (전체 화면을 덮는 삼각형)
+        const vertexShaderSource = `#version 300 es
+            in vec2 position;
+            void main() {
+                gl_Position = vec4(position, 0.0, 1.0);
+            }
+        `;
+
+        // Fragment Shader 직접 사용
+        function buildFragmentShader(userCode) {
+            // WebGL 2.0 GLSL 300 es 버전 사용
+            // Shadertoy 스타일 코드를 그대로 지원
+            if (userCode.includes('void mainImage')) {
+                return `#version 300 es
+                    precision highp float;
+                    uniform vec2 iResolution;
+                    uniform float iTime;
+                    uniform vec4 iMouse;
+                    uniform int iFrame;
+                    
+                    out vec4 fragColor;
+                    
+                    ${userCode}
+                    
+                    void main() {
+                        mainImage(fragColor, gl_FragCoord.xy);
+                    }
+                `;
+            }
+
+            // void main()이 있으면 그대로 사용
+            if (userCode.includes('void main()')) {
+                // GLSL 300 es 버전이 없으면 추가
+                if (!userCode.includes('#version 300 es')) {
+                    return `#version 300 es\n${userCode}`;
+                }
+                return userCode;
+            }
+
+            // 둘 다 없으면 기본 래퍼 제공
+            return `#version 300 es
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec4 iMouse;
+                uniform int iFrame;
+                
+                out vec4 fragColor;
+                
+                ${userCode}
+            `;
+        }
+
+        // 쉐이더 컴파일
+        function compileShader(source, type) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                const error = gl.getShaderInfoLog(shader);
+                gl.deleteShader(shader);
+                throw new Error(error);
+            }
+
+            return shader;
+        }
+
+        // 프로그램 생성
+        function createProgram(userFragmentCode) {
+            const vertexShader = compileShader(vertexShaderSource, gl.VERTEX_SHADER);
+            const fragmentShader = compileShader(
+                buildFragmentShader(userFragmentCode),
+                gl.FRAGMENT_SHADER
+            );
+
+            const newProgram = gl.createProgram();
+            gl.attachShader(newProgram, vertexShader);
+            gl.attachShader(newProgram, fragmentShader);
+            gl.linkProgram(newProgram);
+
+            if (!gl.getProgramParameter(newProgram, gl.LINK_STATUS)) {
+                const error = gl.getProgramInfoLog(newProgram);
+                gl.deleteProgram(newProgram);
+                throw new Error(error);
+            }
+
+            return newProgram;
+        }
+
+        // 전체 화면 삼각형 버퍼 생성
+        const vertices = new Float32Array([
+            -1, -1,
+            3, -1,
+            -1, 3
+        ]);
+
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+        // 마우스 위치 추적
+        let mouseX = 0,
+            mouseY = 0;
+        let mouseDown = false;
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = canvas.height - (e.clientY - rect.top);
+        });
+
+        canvas.addEventListener('mousedown', () => mouseDown = true);
+        canvas.addEventListener('mouseup', () => mouseDown = false);
+
+        // 렌더링 루프
+        let animationId = null;
+
+        function render() {
+            if (!program) return;
+
+            const currentTime = (Date.now() - startTime) / 1000.0;
+
+            gl.useProgram(program);
+
+            // Uniforms 설정
+            const iResolutionLoc = gl.getUniformLocation(program, 'iResolution');
+            const iTimeLoc = gl.getUniformLocation(program, 'iTime');
+            const iMouseLoc = gl.getUniformLocation(program, 'iMouse');
+            const iFrameLoc = gl.getUniformLocation(program, 'iFrame');
+
+            gl.uniform2f(iResolutionLoc, canvas.width, canvas.height);
+            gl.uniform1f(iTimeLoc, currentTime);
+            gl.uniform4f(iMouseLoc, mouseX, mouseY, mouseDown ? 1 : 0, 0);
+            gl.uniform1i(iFrameLoc, frameCount);
+
+            // Position attribute 설정
+            const positionLoc = gl.getAttribLocation(program, 'position');
+            gl.enableVertexAttribArray(positionLoc);
+            gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
+
+            // 그리기
+            gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+            // FPS 계산
+            frameCount++;
+            const now = Date.now();
+            if (now - lastFpsTime >= 1000) {
+                currentFps = frameCount;
+                fpsCounter.textContent = currentFps;
+                frameCount = 0;
+                lastFpsTime = now;
+            }
+
+            timeCounter.textContent = currentTime.toFixed(2);
+
+            animationId = requestAnimationFrame(render);
+        }
+
+        // 쉐이더 컴파일 및 실행
+        function compileAndRun() {
+            try {
+                const newProgram = createProgram(shaderCode.value);
+
+                if (program) {
+                    gl.deleteProgram(program);
+                }
+
+                program = newProgram;
+                errorDiv.style.display = 'none';
+
+                if (!animationId) {
+                    render();
+                }
+            } catch (error) {
+                errorDiv.textContent = '쉐이더 컴파일 오류:\n' + error.message;
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        // 초기 컴파일
+        compileAndRun();
+
+        // 이벤트 리스너
+        document.getElementById('compile-btn').addEventListener('click', compileAndRun);
+
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            startTime = Date.now();
+            frameCount = 0;
+        });
+
+        document.getElementById('apply-res-btn').addEventListener('click', () => {
+            const width = parseInt(document.getElementById('width').value);
+            const height = parseInt(document.getElementById('height').value);
+            setResolution(width, height);
+        });
+
+        // 키보드 단축키
+        shaderCode.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                compileAndRun();
+            }
+
+            // Tab 키 처리
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = shaderCode.selectionStart;
+                const end = shaderCode.selectionEnd;
+                shaderCode.value = shaderCode.value.substring(0, start) + '    ' + shaderCode.value.substring(
+                    end);
+                shaderCode.selectionStart = shaderCode.selectionEnd = start + 4;
+            }
+        });
+
+        // 녹화 기능
+        document.getElementById('record-btn').addEventListener('click', () => {
+            if (!isRecording) {
+                startRecording();
+            } else {
+                stopRecording();
+            }
+        });
+
+        function startRecording() {
+            const fps = parseInt(document.getElementById('fps').value);
+            const stream = canvas.captureStream(fps);
+
+            recordedChunks = [];
+
+            // MP4 (H.264) 시도, 지원 안 하면 WebM으로 폴백
+            let options = {
+                mimeType: 'video/mp4;codecs=avc1',
+                videoBitsPerSecond: 25000000 // 25 Mbps for high quality
+            };
+
+            let fileExtension = 'mp4';
+            let mimeType = 'video/mp4';
+
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                // MP4 안 되면 WebM VP9 시도
+                options.mimeType = 'video/webm;codecs=vp9';
+                fileExtension = 'webm';
+                mimeType = 'video/webm';
+
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    // VP9도 안 되면 VP8
+                    options.mimeType = 'video/webm;codecs=vp8';
+                }
+            }
+
+            mediaRecorder = new MediaRecorder(stream, options);
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, {
+                    type: mimeType
+                });
+                const url = URL.createObjectURL(blob);
+
+                const downloadBtn = document.getElementById('download-btn');
+                downloadBtn.style.display = 'inline-block';
+                downloadBtn.onclick = () => {
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `shader-recording-${Date.now()}.${fileExtension}`;
+                    a.click();
+                };
+            };
+
+            mediaRecorder.start();
+            isRecording = true;
+
+            const recordBtn = document.getElementById('record-btn');
+            recordBtn.textContent = '녹화 중지';
+            recordBtn.classList.add('recording');
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+
+            isRecording = false;
+
+            const recordBtn = document.getElementById('record-btn');
+            recordBtn.textContent = '녹화 시작';
+            recordBtn.classList.remove('recording');
+        }
+    </script>
+</body>
+
+</html>
