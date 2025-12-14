@@ -77,21 +77,19 @@
         }
 
         .param-label {
-            min-width: 100px;
+            min-width: 80px;
             font-size: 12px;
             color: #4ec9b0;
         }
 
-        .param-slider {
-            flex: 1;
-            min-width: 100px;
-        }
-
-        .param-value {
-            min-width: 50px;
-            text-align: right;
-            font-size: 12px;
+        .param-input {
+            width: 100px;
+            background: #3c3c3c;
             color: #d4d4d4;
+            border: 1px solid #555;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
             font-family: 'Consolas', 'Monaco', monospace;
         }
 
@@ -99,7 +97,7 @@
             background: #3c3c3c;
             color: #d4d4d4;
             border: none;
-            padding: 2px 8px;
+            padding: 4px 8px;
             cursor: pointer;
             border-radius: 3px;
             font-size: 11px;
@@ -245,6 +243,7 @@
 
         .card-delete {
             position: absolute;
+            z-index: 10;
             top: 4px;
             right: 4px;
             background: rgba(217, 83, 79, 0.9);
@@ -363,13 +362,6 @@
                         <button id="download-btn" style="display: none;">다운로드</button>
                         <span id="record-status" style="color: #888; margin-left: 10px;"></span>
                     </div>
-                    <!-- <div
-                        style="background-color: rgba(255, 255, 255, 0.2); color: #c8c8c8; font-size: small; padding: 10px; text-align: left;">
-
-                        // #pragma param 이름 최소값 최대값 기본값 [step]
-                        <br>
-                        #pragma param speed 0.0 5.0 1.0 0.1
-                    </div> -->
                 </div>
 
                 <textarea id="shader-code" spellcheck="false">
@@ -564,28 +556,27 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                     return `
                         <div class="param-control">
                             <span class="param-label">${name}</span>
-                            <input type="range" 
-                                   class="param-slider" 
+                            <input type="number" 
+                                   class="param-input" 
                                    id="param-${name}"
                                    min="${p.min}" 
                                    max="${p.max}" 
                                    step="${p.step}" 
                                    value="${p.value}">
-                            <span class="param-value" id="value-${name}">${p.value.toFixed(2)}</span>
                             <button class="param-reset" onclick="resetParam('${name}')">↺</button>
                         </div>
                     `;
                 }).join('');
 
-            // 슬라이더 이벤트 리스너 추가
+            // input 이벤트 리스너 추가
             Object.keys(shaderParams).forEach(name => {
-                const slider = document.getElementById(`param-${name}`);
-                const valueDisplay = document.getElementById(`value-${name}`);
+                const input = document.getElementById(`param-${name}`);
 
-                slider.addEventListener('input', (e) => {
+                input.addEventListener('input', (e) => {
                     const value = parseFloat(e.target.value);
-                    shaderParams[name].value = value;
-                    valueDisplay.textContent = value.toFixed(2);
+                    if (!isNaN(value)) {
+                        shaderParams[name].value = value;
+                    }
                 });
             });
         }
@@ -596,11 +587,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                 const defaultVal = shaderParams[name].default;
                 shaderParams[name].value = defaultVal;
 
-                const slider = document.getElementById(`param-${name}`);
-                const valueDisplay = document.getElementById(`value-${name}`);
-
-                if (slider) slider.value = defaultVal;
-                if (valueDisplay) valueDisplay.textContent = defaultVal.toFixed(2);
+                const input = document.getElementById(`param-${name}`);
+                if (input) input.value = defaultVal;
             }
         }
 
@@ -686,6 +674,10 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         canvas.addEventListener('mousedown', () => mouseDown = true);
         canvas.addEventListener('mouseup', () => mouseDown = false);
 
+        // LocalStorage 관리
+        const STORAGE_KEY = 'shader-codes';
+        let currentCardId = null;
+
         // 렌더링 루프
         let animationId = null;
 
@@ -751,23 +743,6 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             animationId = requestAnimationFrame(render);
         }
 
-        // 초기 컴파일
-        compileAndRun();
-
-        // 이벤트 리스너
-        document.getElementById('compile-btn').addEventListener('click', compileAndRun);
-
-        document.getElementById('reset-btn').addEventListener('click', () => {
-            startTime = Date.now();
-            frameCount = 0;
-        });
-
-        document.getElementById('apply-res-btn').addEventListener('click', () => {
-            const width = parseInt(document.getElementById('width').value);
-            const height = parseInt(document.getElementById('height').value);
-            setResolution(width, height);
-        });
-
         // 키보드 단축키
         shaderCode.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.key === 'Enter') {
@@ -786,17 +761,22 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             }
         });
 
-        // LocalStorage 관리
-        const STORAGE_KEY = 'shader-codes';
-        let currentCardId = null;
-
         function getSavedCodes() {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            return saved ? JSON.parse(saved) : [];
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                return saved ? JSON.parse(saved) : [];
+            } catch (e) {
+                console.warn('LocalStorage 읽기 오류:', e);
+                return [];
+            }
         }
 
         function setSavedCodes(codes) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(codes));
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(codes));
+            } catch (e) {
+                console.warn('LocalStorage 저장 오류:', e);
+            }
         }
 
         function generateCardName() {
@@ -954,25 +934,6 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             }
         }
 
-        function compileShaderForPreview(source, type, context) {
-            if (!context) return null;
-
-            try {
-                const shader = context.createShader(type);
-                context.shaderSource(shader, source);
-                context.compileShader(shader);
-
-                if (!context.getShaderParameter(shader, context.COMPILE_STATUS)) {
-                    context.deleteShader(shader);
-                    return null;
-                }
-
-                return shader;
-            } catch (e) {
-                return null;
-            }
-        }
-
         function loadCard(id) {
             const codes = getSavedCodes();
             const code = codes.find(c => c.id === id);
@@ -1008,7 +969,33 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             const newCode = {
                 id: Date.now(),
                 name: generateCardName(),
-                code: '// 새 쉐이더\n\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 uv = fragCoord / iResolution.xy;\n    fragColor = vec4(uv, 0.5, 1.0);\n}',
+                code: `// WebGL 2.0 GLSL 300 es 지원
+                
+// 파라미터 정의: #pragma param 이름 최소값 최대값 기본값 [step]
+#pragma param speed 0.0 5.0 1.0 0.1
+#pragma param radius 0.1 1.0 0.5 0.01
+#pragma param intensity 0.0 2.0 1.0 0.05
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+    // 정규화된 좌표 (0.0 ~ 1.0)
+    vec2 uv = fragCoord / iResolution.xy;
+
+    // 중심 기준 좌표 (-1.0 ~ 1.0)
+    vec2 p = (2.0 * fragCoord - iResolution.xy) / iResolution.y;
+
+    // 시간에 따라 변하는 색상 (speed 파라미터 사용)
+    vec3 col = 0.5 + 0.5 * cos(iTime * speed + uv.xyx + vec3(0, 2, 4));
+
+    // 원 그리기 (radius와 intensity 파라미터 사용)
+    float d = length(p) - radius;
+    d = sin(d * 8.0 + iTime * speed) / 8.0;
+    d = abs(d);
+    d = 0.02 / d;
+    col *= d * intensity;
+    
+    fragColor = vec4(col, 1.0);
+}
+                `,
                 date: new Date().toISOString()
             };
 
@@ -1045,15 +1032,6 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                 hour: '2-digit',
                 minute: '2-digit'
             });
-        }
-
-        // 초기 카드 렌더링
-        renderCards();
-
-        // 기존 데이터가 있으면 첫 번째 카드 로드
-        const savedCodes = getSavedCodes();
-        if (savedCodes.length > 0) {
-            loadCard(savedCodes[savedCodes.length - 1].id);
         }
 
         // 녹화 기능
@@ -1185,6 +1163,36 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             const recordBtn = document.getElementById('record-btn');
             recordBtn.textContent = '녹화 시작';
             recordBtn.classList.remove('recording');
+        }
+
+        // 이벤트 리스너 등록
+        document.getElementById('compile-btn').addEventListener('click', compileAndRun);
+
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            startTime = Date.now();
+            frameCount = 0;
+        });
+
+        document.getElementById('apply-res-btn').addEventListener('click', () => {
+            const width = parseInt(document.getElementById('width').value);
+            const height = parseInt(document.getElementById('height').value);
+            setResolution(width, height);
+        });
+
+        // 초기 카드 렌더링
+        renderCards();
+
+        // 기존 데이터가 있으면 마지막 카드 로드, 없으면 기본 쉐이더 사용
+        const savedCodes = getSavedCodes();
+        if (savedCodes.length > 0) {
+            // 가장 최근 카드 로드 (배열의 마지막 요소)
+            const lastCode = savedCodes[savedCodes.length - 1];
+            if (lastCode && lastCode.id) {
+                loadCard(lastCode.id);
+            }
+        } else {
+            // 첫 접속이면 기본 쉐이더로 초기 컴파일
+            compileAndRun();
         }
     </script>
 </body>
