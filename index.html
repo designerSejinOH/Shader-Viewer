@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shader Grid Viewer - Parameter Variation</title>
+  <title>Shader Recorder for Yewon</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body {
@@ -193,8 +193,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
     <!-- Viewer Panel -->
     <div id="viewer-panel" class="w-1/2 flex flex-col bg-[#2d2d30]">
-      <!-- Preview Section (상단 50%) -->
-      <div class="h-2/5 p-4 flex items-center justify-center relative overflow-hidden border-b border-[#333]">
+      <!-- Preview Section (상단 40%) -->
+      <div class="h-2/5 p-4 flex items-center justify-center relative border-b border-[#333]">
         <div id="canvas-container" class="w-full h-full flex items-center justify-center">
           <canvas id="canvas" class="max-w-full max-h-full object-contain"></canvas>
           <canvas id="grid-canvas" class="max-w-full max-h-full object-contain hidden"></canvas>
@@ -214,15 +214,15 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         </div>
       </div>
 
-      <!-- Parameters Section (하단 50%) -->
-      <div class="h-3/5 bg-[#252526] overflow-y-scroll custom-scrollbar">
+      <!-- Parameters Section (하단 60%) -->
+      <div class="h-3/5 bg-[#252526] overflow-y-auto custom-scrollbar">
         <div id="params-panel" class="p-4">
-          <div class="flex justify-between items-start mb-3 pb-2 border-b border-[#3c3c3c]">
+          <div class="flex justify-between items-center mb-3 pb-2 border-b border-[#3c3c3c]">
             <span class="text-sm font-bold text-[#4ec9b0]">쉐이더 파라미터</span>
             <button class="params-toggle bg-[#3c3c3c] hover:bg-[#4c4c4c] text-[#d4d4d4] px-2 py-1 rounded text-xs"
               onclick="toggleParamsPanel()">−</button>
           </div>
-          <div id="params-content" class="">
+          <div id="params-content">
             <div class="text-xs text-gray-400 text-center py-8">파라미터가 없습니다</div>
           </div>
         </div>

@@ -734,6 +734,28 @@ function formatDate(iso) {
 }
 
 // 녹화
+function startRecordingAt(startFrom) {
+  const currentTime = (Date.now() - startTime) / 1000.0;
+
+  autoStopEnabled = document.getElementById("auto-stop").checked;
+  recordingTargetDuration = parseFloat(
+    document.getElementById("record-duration").value
+  );
+
+  if (Math.abs(currentTime - startFrom) > 0.1) {
+    startTime = Date.now() - startFrom * 1000;
+    document.getElementById("record-status").textContent = `${startFrom.toFixed(
+      1
+    )}초로 이동 중...`;
+
+    setTimeout(() => {
+      startRecording();
+    }, 100);
+  } else {
+    startRecording();
+  }
+}
+
 function startRecording() {
   const fps = parseInt(document.getElementById("fps").value);
   const bitrate = parseInt(document.getElementById("bitrate").value);
@@ -875,14 +897,17 @@ document
 
 document.getElementById("record-btn").addEventListener("click", () => {
   if (!isRecording) {
-    autoStopEnabled = document.getElementById("auto-stop").checked;
-    recordingTargetDuration = parseFloat(
-      document.getElementById("record-duration").value
-    );
-    startRecording();
+    const startFrom = parseFloat(document.getElementById("record-start").value);
+    startRecordingAt(startFrom);
   } else {
     stopRecording();
   }
+});
+
+document.getElementById("record-reset-btn").addEventListener("click", () => {
+  startTime = Date.now();
+  frameCount = 0;
+  startRecordingAt(0);
 });
 
 document.getElementById("shader-code").addEventListener("keydown", (e) => {
