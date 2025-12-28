@@ -48,11 +48,45 @@ let mouseX = 0,
 function setResolution(width, height) {
   canvas.width = width;
   canvas.height = height;
-  gridCanvas.width = width;
-  gridCanvas.height = height;
+
+  // 그리드 모드일 때는 비율을 그리드에 맞게 조정
+  if (isGridMode) {
+    updateGridCanvasSize(width, height);
+  } else {
+    gridCanvas.width = width;
+    gridCanvas.height = height;
+    gridGl.viewport(0, 0, width, height);
+  }
+
   document.getElementById("resolution-info").textContent = `${width}×${height}`;
   gl.viewport(0, 0, width, height);
-  gridGl.viewport(0, 0, width, height);
+}
+
+function updateGridCanvasSize(baseWidth, baseHeight) {
+  // 각 셀이 16:9 비율을 유지하도록
+  // 기준 셀 크기 계산 (성능을 위해 적절한 크기로)
+  const cellAspectRatio = baseWidth / baseHeight; // 16:9 = 1.777...
+
+  // 적절한 셀 크기 설정 (너무 크지 않게)
+  let cellWidth, cellHeight;
+
+  // 전체 픽셀 수를 적당히 유지
+  const maxDimension = Math.max(gridCols, gridRows);
+  if (maxDimension <= 3) {
+    cellWidth = 640;
+    cellHeight = 360;
+  } else if (maxDimension <= 5) {
+    cellWidth = 480;
+    cellHeight = 270;
+  } else {
+    cellWidth = 384;
+    cellHeight = 216;
+  }
+
+  // 각 셀이 16:9를 유지하도록 전체 크기 계산
+  gridCanvas.width = cellWidth * gridCols;
+  gridCanvas.height = cellHeight * gridRows;
+  gridGl.viewport(0, 0, gridCanvas.width, gridCanvas.height);
 }
 
 setResolution(1920, 1080);
@@ -519,7 +553,7 @@ function renderGrid(currentTime) {
   let cellIndex = 0;
   for (let row = 0; row < gridRows; row++) {
     for (let col = 0; col < gridCols; col++) {
-      // 정수 좌표 사용으로 픽셀 경계 정렬
+      // Math.floor로 정수 좌표 사용하여 픽셀 경계 정렬 (선 제거)
       const x = Math.floor((col * gridCanvas.width) / gridCols);
       const y = Math.floor((row * gridCanvas.height) / gridRows);
       const w = Math.floor(((col + 1) * gridCanvas.width) / gridCols) - x;
@@ -761,7 +795,27 @@ function startRecording() {
   const fps = parseInt(document.getElementById("fps").value);
   const bitrate = parseInt(document.getElementById("bitrate").value);
   const targetCanvas = isGridMode ? gridCanvas : canvas;
-  const stream = targetCanvas.captureStream(fps);
+
+  // 캔버스 크기 경고
+  const maxPixels = targetCanvas.width * targetCanvas.height;
+  if (maxPixels > 16777216) {
+    // 4096 x 4096
+    if (
+      !confirm(
+        `경고: 캔버스 크기가 매우 큽니다 (${targetCanvas.width}×${targetCanvas.height})\n녹화가 실패할 수 있습니다.\n\n계속하시겠습니까?`
+      )
+    ) {
+      return;
+    }
+  }
+
+  let stream;
+  try {
+    stream = targetCanvas.captureStream(fps);
+  } catch (e) {
+    alert("캔버스 스트림 생성 실패: " + e.message);
+    return;
+  }
 
   recordedChunks = [];
   recordingStartTime = (Date.now() - startTime) / 1000.0;
@@ -779,20 +833,42 @@ function startRecording() {
     mime = "video/webm";
   }
 
-  mediaRecorder = new MediaRecorder(stream, options);
+  try {
+    mediaRecorder = new MediaRecorder(stream, options);
+  } catch (e) {
+    alert("MediaRecorder 생성 실패: " + e.message);
+    return;
+  }
+
   mediaRecorder.ondataavailable = (e) => {
     if (e.data?.size > 0) recordedChunks.push(e.data);
   };
+  mediaRecorder.onerror = (e) => {
+    console.error("녹화 오류:", e);
+    alert("녹화 중 오류 발생");
+    stopRecording();
+  };
   mediaRecorder.onstop = () => {
+    if (recordedChunks.length === 0) {
+      alert("녹화된 데이터가 없습니다.");
+      return;
+    }
+
     const blob = new Blob(recordedChunks, { type: mime });
     const url = URL.createObjectURL(blob);
     const downloadBtn = document.getElementById("download-btn");
     downloadBtn.classList.remove("hidden");
     downloadBtn.onclick = () => {
       const a = document.createElement("a");
+      a.style.display = "none";
       a.href = url;
       a.download = `shader-${Date.now()}.${ext}`;
+      document.body.appendChild(a);
       a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
     };
     document.getElementById("record-status").textContent = `완료 (${(
       blob.size /
@@ -801,10 +877,14 @@ function startRecording() {
     ).toFixed(2)}MB)`;
   };
 
-  mediaRecorder.start(1000);
-  isRecording = true;
-  document.getElementById("record-btn").textContent = "녹화 중지";
-  document.getElementById("record-btn").classList.add("bg-red-600");
+  try {
+    mediaRecorder.start(1000);
+    isRecording = true;
+    document.getElementById("record-btn").textContent = "녹화 중지";
+    document.getElementById("record-btn").classList.add("bg-red-600");
+  } catch (e) {
+    alert("녹화 시작 실패: " + e.message);
+  }
 }
 
 function stopRecording() {
@@ -838,9 +918,18 @@ document.getElementById("toggle-grid-btn").addEventListener("click", () => {
     canvas.classList.add("hidden");
     gridCanvas.classList.remove("hidden");
     gridSettings.classList.remove("hidden");
+
+    gridCols = parseInt(document.getElementById("grid-cols").value);
+    gridRows = parseInt(document.getElementById("grid-rows").value);
+
+    updateGridCanvasSize(canvas.width, canvas.height);
+
     document.getElementById(
       "mode-info"
     ).textContent = `그리드 ${gridCols}×${gridRows}`;
+    document.getElementById(
+      "resolution-info"
+    ).textContent = `${gridCanvas.width}×${gridCanvas.height} (비율 ${gridCols}:${gridRows})`;
     generateTimeOffsets();
   } else {
     btn.textContent = "그리드 모드";
@@ -849,11 +938,23 @@ document.getElementById("toggle-grid-btn").addEventListener("click", () => {
     gridCanvas.classList.add("hidden");
     gridSettings.classList.add("hidden");
     document.getElementById("mode-info").textContent = "단일";
+    document.getElementById(
+      "resolution-info"
+    ).textContent = `${canvas.width}×${canvas.height}`;
   }
 });
 
 document.getElementById("grid-cols").addEventListener("change", (e) => {
   gridCols = parseInt(e.target.value);
+  if (isGridMode) {
+    updateGridCanvasSize(canvas.width, canvas.height);
+    document.getElementById(
+      "mode-info"
+    ).textContent = `그리드 ${gridCols}×${gridRows}`;
+    document.getElementById(
+      "resolution-info"
+    ).textContent = `${gridCanvas.width}×${gridCanvas.height} (비율 ${gridCols}:${gridRows})`;
+  }
   generateTimeOffsets();
   // 파라미터 그리드도 업데이트
   Object.keys(cellParamVariations).forEach((name) => {
@@ -868,6 +969,15 @@ document.getElementById("grid-cols").addEventListener("change", (e) => {
 });
 document.getElementById("grid-rows").addEventListener("change", (e) => {
   gridRows = parseInt(e.target.value);
+  if (isGridMode) {
+    updateGridCanvasSize(canvas.width, canvas.height);
+    document.getElementById(
+      "mode-info"
+    ).textContent = `그리드 ${gridCols}×${gridRows}`;
+    document.getElementById(
+      "resolution-info"
+    ).textContent = `${gridCanvas.width}×${gridCanvas.height} (비율 ${gridCols}:${gridRows})`;
+  }
   generateTimeOffsets();
   // 파라미터 그리드도 업데이트
   Object.keys(cellParamVariations).forEach((name) => {
