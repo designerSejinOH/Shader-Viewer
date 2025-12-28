@@ -508,8 +508,6 @@ function renderSingle(currentTime) {
 
 function renderGrid(currentTime) {
   gridGl.useProgram(gridProgram);
-  const cellWidth = gridCanvas.width / gridCols;
-  const cellHeight = gridCanvas.height / gridRows;
 
   gridGl.clearColor(0, 0, 0, 1);
   gridGl.clear(gridGl.COLOR_BUFFER_BIT);
@@ -521,11 +519,14 @@ function renderGrid(currentTime) {
   let cellIndex = 0;
   for (let row = 0; row < gridRows; row++) {
     for (let col = 0; col < gridCols; col++) {
-      const x = col * cellWidth;
-      const y = row * cellHeight;
+      // 정수 좌표 사용으로 픽셀 경계 정렬
+      const x = Math.floor((col * gridCanvas.width) / gridCols);
+      const y = Math.floor((row * gridCanvas.height) / gridRows);
+      const w = Math.floor(((col + 1) * gridCanvas.width) / gridCols) - x;
+      const h = Math.floor(((row + 1) * gridCanvas.height) / gridRows) - y;
 
-      gridGl.viewport(x, y, cellWidth, cellHeight);
-      gridGl.scissor(x, y, cellWidth, cellHeight);
+      gridGl.viewport(x, y, w, h);
+      gridGl.scissor(x, y, w, h);
       gridGl.enable(gridGl.SCISSOR_TEST);
 
       const offset = cellTimeOffsets[cellIndex] || 0;
@@ -541,8 +542,8 @@ function renderGrid(currentTime) {
 
       gridGl.uniform2f(
         gridGl.getUniformLocation(gridProgram, "iResolution"),
-        cellWidth,
-        cellHeight
+        w,
+        h
       );
       gridGl.uniform1f(
         gridGl.getUniformLocation(gridProgram, "iTime"),
