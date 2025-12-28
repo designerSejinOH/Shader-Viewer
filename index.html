@@ -4,1689 +4,233 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shader Grid Viewer for Yewon</title>
+  <title>Shader Grid Viewer - Parameter Variation</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
     body {
       font-family: 'Consolas', 'Monaco', monospace;
-      background: #1e1e1e;
-      color: #d4d4d4;
-      overflow: hidden;
-    }
-
-    #container {
-      display: flex;
-      height: 100vh;
-    }
-
-    #editor-panel {
-      width: 50%;
-      display: flex;
-      flex-direction: column;
-      border-right: 1px solid #333;
-    }
-
-    #editor-container {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-    }
-
-    #controls {
-      background: #252526;
-      padding: 10px;
-      border-bottom: 1px solid #333;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      max-height: 50vh;
-      overflow-y: auto;
-    }
-
-    .control-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    #controls button {
-      background: #0e639c;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      margin-right: 8px;
-      cursor: pointer;
-      border-radius: 3px;
-      font-size: 13px;
-    }
-
-    #controls button:hover {
-      background: #1177bb;
-    }
-
-    #controls button.recording {
-      background: #d9534f;
-    }
-
-    #controls button.active {
-      background: #4ec9b0;
-    }
-
-    #controls input,
-    #controls select {
-      background: #3c3c3c;
-      color: #d4d4d4;
-      border: 1px solid #555;
-      padding: 6px 10px;
-      margin-right: 8px;
-      border-radius: 3px;
-      font-size: 13px;
-    }
-
-    #controls label {
-      margin-right: 5px;
-      font-size: 13px;
     }
 
     #shader-code {
-      flex: 1;
-      background: #1e1e1e;
-      color: #d4d4d4;
-      border: none;
-      padding: 15px;
-      font-family: 'Consolas', 'Monaco', monospace;
-      font-size: 14px;
-      line-height: 1.5;
-      resize: none;
-      outline: none;
-    }
-
-    #cards-container {
-      background: #252526;
-      border-top: 1px solid #333;
-      padding: 12px 0;
-      overflow-x: auto;
-      overflow-y: hidden;
-      white-space: nowrap;
-    }
-
-    #cards-slider {
-      display: inline-flex;
-      gap: 12px;
-      padding: 0 12px;
-    }
-
-    .shader-card {
-      display: inline-block;
-      width: 160px;
-      height: 120px;
-      background: #1e1e1e;
-      border: 2px solid #3c3c3c;
-      border-radius: 8px;
-      padding: 12px;
-      cursor: pointer;
-      transition: all 0.2s;
-      position: relative;
-      vertical-align: top;
-      flex-shrink: 0;
-    }
-
-    .shader-card:hover {
-      border-color: #0e639c;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    }
-
-    .shader-card.active {
-      border-color: #4ec9b0;
-      background: #2d2d30;
-    }
-
-    .shader-card.add-card {
-      border: 2px dashed #555;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      color: #858585;
-    }
-
-    .shader-card.add-card:hover {
-      border-color: #0e639c;
-      color: #d4d4d4;
-    }
-
-    .card-preview {
-      width: 100%;
-      height: 60px;
-      background: #0a0a0a;
-      border-radius: 4px;
-      margin-bottom: 8px;
-      overflow: hidden;
-      position: relative;
-    }
-
-    .card-preview canvas {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .card-name {
-      font-size: 12px;
-      color: #d4d4d4;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      margin-bottom: 4px;
-    }
-
-    .card-date {
-      font-size: 10px;
-      color: #858585;
-    }
-
-    .card-delete {
-      position: absolute;
-      z-index: 10;
-      top: 4px;
-      right: 4px;
-      background: rgba(217, 83, 79, 0.9);
-      color: white;
-      border: none;
-      border-radius: 3px;
-      width: 20px;
-      height: 20px;
-      cursor: pointer;
-      font-size: 12px;
-      line-height: 1;
-      display: none;
-    }
-
-    .shader-card:hover .card-delete {
-      display: block;
-    }
-
-    .card-delete:hover {
-      background: #c9302c;
-    }
-
-    .add-icon {
-      font-size: 32px;
-      margin-bottom: 4px;
-    }
-
-    #viewer-panel {
-      width: 50%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: #2d2d30;
-      position: relative;
-    }
-
-    #canvas-container {
-      max-width: 100%;
-      max-height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    #canvas {
-      max-width: 100%;
-      max-height: 100%;
-      image-rendering: pixelated;
-    }
-
-    #grid-canvas {
-      max-width: 100%;
-      max-height: 100%;
-      image-rendering: pixelated;
-      display: none;
-    }
-
-    #info {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: rgba(0, 0, 0, 0.7);
-      padding: 8px 12px;
-      border-radius: 4px;
-      font-size: 12px;
-    }
-
-    #params-panel {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: rgba(30, 30, 30, 0.95);
-      border: 1px solid #3c3c3c;
-      border-radius: 6px;
-      padding: 12px;
-      min-width: 280px;
-      max-width: 350px;
-      max-height: 80vh;
-      overflow-y: auto;
-      display: none;
-      backdrop-filter: blur(10px);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-    }
-
-    #params-panel.has-params {
-      display: block;
-    }
-
-    .params-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid #3c3c3c;
-    }
-
-    .params-title {
-      font-size: 13px;
-      font-weight: bold;
-      color: #4ec9b0;
-    }
-
-    .params-toggle {
-      background: #3c3c3c;
-      color: #d4d4d4;
-      border: none;
-      padding: 4px 8px;
-      cursor: pointer;
-      border-radius: 3px;
-      font-size: 11px;
-    }
-
-    .params-toggle:hover {
-      background: #4c4c4c;
-    }
-
-    .param-control {
-      margin-bottom: 16px;
-    }
-
-    .param-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-
-    .param-label {
-      font-size: 12px;
-      color: #4ec9b0;
-      font-weight: 500;
-    }
-
-    .param-value-display {
-      font-size: 11px;
-      color: #858585;
       font-family: 'Consolas', 'Monaco', monospace;
     }
 
-    .param-slider-container {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .param-slider {
-      flex: 1;
-      -webkit-appearance: none;
-      appearance: none;
-      height: 6px;
-      background: #3c3c3c;
-      border-radius: 3px;
-      outline: none;
-      cursor: pointer;
-    }
-
-    .param-slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 16px;
-      height: 16px;
-      background: #4ec9b0;
-      border-radius: 50%;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .param-slider::-webkit-slider-thumb:hover {
-      background: #6ee7d0;
-      transform: scale(1.1);
-    }
-
-    .param-slider::-moz-range-thumb {
-      width: 16px;
-      height: 16px;
-      background: #4ec9b0;
-      border: none;
-      border-radius: 50%;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .param-slider::-moz-range-thumb:hover {
-      background: #6ee7d0;
-      transform: scale(1.1);
-    }
-
-    .param-input-small {
-      width: 70px;
-      background: #3c3c3c;
-      color: #d4d4d4;
-      border: 1px solid #555;
-      padding: 4px 6px;
-      border-radius: 3px;
-      font-size: 11px;
-      font-family: 'Consolas', 'Monaco', monospace;
-      text-align: center;
-    }
-
-    .param-reset-btn {
-      background: #3c3c3c;
-      color: #d4d4d4;
-      border: none;
-      padding: 4px 10px;
-      cursor: pointer;
-      border-radius: 3px;
-      font-size: 11px;
-      transition: background 0.2s;
-    }
-
-    .param-reset-btn:hover {
-      background: #0e639c;
-    }
-
-    .param-limits {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 4px;
-      font-size: 10px;
-      color: #666;
-    }
-
-    #error {
-      position: absolute;
-      bottom: 10px;
-      left: 10px;
-      right: 10px;
-      background: rgba(211, 47, 47, 0.9);
-      color: white;
-      padding: 12px;
-      border-radius: 4px;
-      font-size: 12px;
-      display: none;
-      max-height: 200px;
-      overflow-y: auto;
-    }
-
-    .grid-settings {
-      background: #2d2d30;
-      border: 1px solid #3c3c3c;
-      border-radius: 4px;
-      padding: 10px;
-      margin-top: 5px;
-    }
-
-    .grid-settings-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 8px;
-    }
-
-    .grid-settings-row:last-child {
-      margin-bottom: 0;
-    }
-
-    .cell-offsets-container {
-      margin-top: 10px;
-      padding: 10px;
-      background: #1e1e1e;
-      border-radius: 4px;
-      max-height: 300px;
-      overflow-y: auto;
-    }
-
-    .cell-offsets-title {
-      font-size: 12px;
-      color: #4ec9b0;
-      margin-bottom: 8px;
-      font-weight: bold;
-    }
-
-    .cell-offsets-grid {
-      display: grid;
-      gap: 6px;
-    }
-
-    .cell-offset-item {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      align-items: center;
-    }
-
-    .cell-offset-label {
-      font-size: 10px;
-      color: #858585;
-    }
-
-    .cell-offset-input {
-      background: #3c3c3c;
-      color: #d4d4d4;
-      border: 1px solid #555;
-      padding: 4px 6px;
-      border-radius: 3px;
-      font-size: 11px;
-      width: 100%;
-      text-align: center;
-    }
-
-    #params-panel::-webkit-scrollbar,
-    #controls::-webkit-scrollbar {
+    .custom-scrollbar::-webkit-scrollbar {
       width: 8px;
     }
 
-    #params-panel::-webkit-scrollbar-track,
-    #controls::-webkit-scrollbar-track {
+    .custom-scrollbar::-webkit-scrollbar-track {
       background: #1e1e1e;
     }
 
-    #params-panel::-webkit-scrollbar-thumb,
-    #controls::-webkit-scrollbar-thumb {
+    .custom-scrollbar::-webkit-scrollbar-thumb {
       background: #3c3c3c;
       border-radius: 4px;
     }
 
-    #params-panel::-webkit-scrollbar-thumb:hover,
-    #controls::-webkit-scrollbar-thumb:hover {
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
       background: #4c4c4c;
     }
   </style>
 </head>
 
-<body>
-  <div id="container">
-    <div id="editor-panel">
-      <div id="editor-container">
-        <div id="controls">
-          <div class="control-row">
-            <button id="compile-btn">컴파일 (Ctrl+Enter)</button>
-            <button id="reset-btn">시간 리셋</button>
-            <button id="toggle-grid-btn">그리드 모드</button>
+<body class="bg-[#1e1e1e] text-[#d4d4d4] overflow-hidden">
+  <div id="container" class="flex h-screen">
+    <!-- Editor Panel -->
+    <div id="editor-panel" class="w-1/2 flex flex-col border-r border-[#333]">
+      <div id="editor-container" class="flex-1 flex flex-col min-h-0">
+        <!-- Controls -->
+        <div id="controls"
+          class="bg-[#252526] p-2.5 border-b border-[#333] flex flex-col gap-2.5 max-h-[50vh] overflow-y-auto custom-scrollbar">
+          <!-- Compile & Grid Toggle -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <button id="compile-btn" class="bg-[#0e639c] hover:bg-[#1177bb] text-white px-4 py-2 rounded text-sm">컴파일
+              (Ctrl+Enter)</button>
+            <button id="reset-btn" class="bg-[#0e639c] hover:bg-[#1177bb] text-white px-4 py-2 rounded text-sm">시간
+              리셋</button>
+            <button id="toggle-grid-btn"
+              class="bg-[#0e639c] hover:bg-[#1177bb] text-white px-4 py-2 rounded text-sm">그리드 모드</button>
           </div>
 
-          <div class="control-row">
-            <label>해상도:</label>
-            <input type="number" id="width" value="1920" min="256" max="7680" step="1">
+          <!-- Resolution -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <label class="text-sm">해상도:</label>
+            <input type="number" id="width" value="1920" min="256" max="7680"
+              class="bg-[#3c3c3c] text-[#d4d4d4] border border-[#555] px-2.5 py-1.5 rounded text-sm w-20">
             <span>×</span>
-            <input type="number" id="height" value="1080" min="256" max="4320" step="1">
-            <button id="apply-res-btn">적용</button>
+            <input type="number" id="height" value="1080" min="256" max="4320"
+              class="bg-[#3c3c3c] text-[#d4d4d4] border border-[#555] px-2.5 py-1.5 rounded text-sm w-20">
+            <button id="apply-res-btn"
+              class="bg-[#0e639c] hover:bg-[#1177bb] text-white px-4 py-2 rounded text-sm">적용</button>
           </div>
 
-          <div class="control-row">
-            <label>FPS:</label>
-            <select id="fps">
+          <!-- FPS & Bitrate -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <label class="text-sm">FPS:</label>
+            <select id="fps" class="bg-[#3c3c3c] text-[#d4d4d4] border border-[#555] px-2.5 py-1.5 rounded text-sm">
               <option value="30">30</option>
               <option value="60" selected>60</option>
               <option value="120">120</option>
             </select>
+            <label class="text-sm ml-4">비트레이트:</label>
+            <select id="bitrate" class="bg-[#3c3c3c] text-[#d4d4d4] border border-[#555] px-2.5 py-1.5 rounded text-sm">
+              <option value="25000000">25 Mbps</option>
+              <option value="50000000" selected>50 Mbps</option>
+              <option value="75000000">75 Mbps</option>
+              <option value="100000000">100 Mbps</option>
+            </select>
           </div>
 
-          <!-- 그리드 설정 -->
-          <div class="grid-settings" id="grid-settings" style="display: none;">
-            <div class="grid-settings-row">
-              <label>그리드:</label>
-              <input type="number" id="grid-cols" value="3" min="1" max="10" step="1" style="width: 60px;">
+          <!-- Grid Settings -->
+          <div id="grid-settings" class="hidden bg-[#2d2d30] border border-[#3c3c3c] rounded p-2.5 mt-1">
+            <div class="flex items-center gap-2 mb-2">
+              <label class="text-sm">그리드:</label>
+              <input type="number" id="grid-cols" value="3" min="1" max="10"
+                class="bg-[#3c3c3c] text-[#d4d4d4] border border-[#555] px-2 py-1 rounded text-sm w-16">
               <span>×</span>
-              <input type="number" id="grid-rows" value="3" min="1" max="10" step="1" style="width: 60px;">
+              <input type="number" id="grid-rows" value="3" min="1" max="10"
+                class="bg-[#3c3c3c] text-[#d4d4d4] border border-[#555] px-2 py-1 rounded text-sm w-16">
             </div>
-            <div class="grid-settings-row">
-              <label>루프 길이:</label>
-              <input type="number" id="loop-duration" value="3" min="0.1" max="60" step="0.1" style="width: 80px;">
-              <span>초</span>
+            <div class="flex items-center gap-2 mb-2">
+              <label class="text-sm">루프 길이:</label>
+              <input type="number" id="loop-duration" value="3" min="0.1" max="60" step="0.1"
+                class="bg-[#3c3c3c] text-[#d4d4d4] border border-[#555] px-2 py-1 rounded text-sm w-20">
+              <span class="text-sm">초</span>
             </div>
-            <div class="grid-settings-row">
-              <label>재생 속도:</label>
-              <input type="number" id="playback-speed" value="1.0" min="0.1" max="5.0" step="0.1" style="width: 80px;">
-              <span>×</span>
+            <div class="flex items-center gap-2 mb-2">
+              <label class="text-sm">재생 속도:</label>
+              <input type="number" id="playback-speed" value="1.0" min="0.1" max="5.0" step="0.1"
+                class="bg-[#3c3c3c] text-[#d4d4d4] border border-[#555] px-2 py-1 rounded text-sm w-20">
+              <span class="text-sm">×</span>
             </div>
-            <div class="grid-settings-row">
-              <label>루프 모드:</label>
-              <select id="loop-mode">
+            <div class="flex items-center gap-2 mb-2">
+              <label class="text-sm">루프 모드:</label>
+              <select id="loop-mode" class="bg-[#3c3c3c] text-[#d4d4d4] border border-[#555] px-2 py-1 rounded text-sm">
                 <option value="pingpong">핑퐁 (왕복)</option>
-                <option value="repeat">반복 (처음부터)</option>
+                <option value="repeat">반복</option>
               </select>
             </div>
-            <div class="grid-settings-row">
-              <label>시간 오프셋:</label>
-              <select id="offset-mode">
-                <option value="random">랜덤 (0, 1, 2초)</option>
+            <div class="flex items-center gap-2 mb-2">
+              <label class="text-sm">시간 오프셋:</label>
+              <select id="offset-mode"
+                class="bg-[#3c3c3c] text-[#d4d4d4] border border-[#555] px-2 py-1 rounded text-sm">
+                <option value="random">랜덤</option>
                 <option value="sequential">순차적</option>
-                <option value="manual">수동 설정</option>
+                <option value="manual">수동</option>
                 <option value="none">없음</option>
               </select>
             </div>
-            <div class="grid-settings-row">
-              <button id="regenerate-offsets-btn">오프셋 재생성</button>
+            <div class="flex items-center gap-2">
+              <button id="regenerate-offsets-btn"
+                class="bg-[#0e639c] hover:bg-[#1177bb] text-white px-3 py-1 rounded text-sm">오프셋 재생성</button>
             </div>
 
-            <!-- 개별 셀 오프셋 조정 -->
-            <div class="cell-offsets-container" id="cell-offsets-container" style="display: none;">
-              <div class="cell-offsets-title">각 셀 오프셋 (초)</div>
-              <div class="cell-offsets-grid" id="cell-offsets-grid"></div>
+            <!-- Cell Time Offsets -->
+            <div id="cell-offsets-container"
+              class="hidden mt-2 p-2 bg-[#1e1e1e] rounded max-h-[300px] overflow-y-auto custom-scrollbar">
+              <div class="text-xs text-[#4ec9b0] font-bold mb-2">각 셀 시간 오프셋 (초)</div>
+              <div id="cell-offsets-grid" class="grid gap-1.5"></div>
             </div>
           </div>
 
-          <div class="control-row">
-            <label>녹화 시작 시간:</label>
-            <input type="number" id="record-start" value="0" min="0" step="0.1" style="width: 80px;">
-            <span>초</span>
-            <label style="margin-left: 15px;">녹화 길이:</label>
-            <input type="number" id="record-duration" value="10" min="0.1" step="0.1" style="width: 80px;">
-            <span>초</span>
-            <label style="margin-left: 10px;">
+          <!-- Recording -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <label class="text-sm">녹화 시작:</label>
+            <input type="number" id="record-start" value="0" min="0" step="0.1"
+              class="bg-[#3c3c3c] text-[#d4d4d4] border border-[#555] px-2 py-1 rounded text-sm w-20">
+            <span class="text-sm">초</span>
+            <label class="text-sm ml-4">녹화 길이:</label>
+            <input type="number" id="record-duration" value="10" min="0.1" step="0.1"
+              class="bg-[#3c3c3c] text-[#d4d4d4] border border-[#555] px-2 py-1 rounded text-sm w-20">
+            <span class="text-sm">초</span>
+            <label class="text-sm ml-2 flex items-center gap-1">
               <input type="checkbox" id="auto-stop" checked>
               자동 중지
             </label>
           </div>
 
-          <div class="control-row">
-            <button id="record-btn">녹화 시작</button>
-            <button id="record-reset-btn">0초부터 녹화</button>
-            <button id="download-btn" style="display: none;">다운로드</button>
-            <span id="record-status" style="color: #888; margin-left: 10px;"></span>
+          <div class="flex items-center gap-2 flex-wrap">
+            <button id="record-btn" class="bg-[#0e639c] hover:bg-[#1177bb] text-white px-4 py-2 rounded text-sm">녹화
+              시작</button>
+            <button id="record-reset-btn"
+              class="bg-[#0e639c] hover:bg-[#1177bb] text-white px-4 py-2 rounded text-sm">0초부터 녹화</button>
+            <button id="download-btn"
+              class="hidden bg-[#0e639c] hover:bg-[#1177bb] text-white px-4 py-2 rounded text-sm">다운로드</button>
+            <span id="record-status" class="text-xs text-gray-400 ml-2"></span>
           </div>
         </div>
 
-        <textarea id="shader-code" spellcheck="false">// WebGL 2.0 GLSL 300 es 지원
+        <!-- Shader Code Editor -->
+        <textarea id="shader-code" spellcheck="false"
+          class="flex-1 bg-[#1e1e1e] text-[#d4d4d4] border-0 p-4 text-sm leading-relaxed resize-none outline-none">// WebGL 2.0 GLSL 300 es
 
-// 파라미터 정의: #pragma param 이름 최소값 최대값 기본값 [step]
 #pragma param speed 0.0 5.0 1.0 0.1
 #pragma param radius 0.1 1.0 0.5 0.01
 #pragma param intensity 0.0 2.0 1.0 0.05
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-    // 정규화된 좌표 (0.0 ~ 1.0)
     vec2 uv = fragCoord / iResolution.xy;
-    
-    // 중심 기준 좌표 (-1.0 ~ 1.0)
     vec2 p = (2.0 * fragCoord - iResolution.xy) / iResolution.y;
     
-    // 시간에 따라 변하는 색상 (speed 파라미터 사용)
     vec3 col = 0.5 + 0.5 * cos(iTime * speed + uv.xyx + vec3(0, 2, 4));
     
-    // 원 그리기 (radius와 intensity 파라미터 사용)
     float d = length(p) - radius;
     d = sin(d * 8.0 + iTime * speed) / 8.0;
     d = abs(d);
     d = 0.02 / d;
-    
     col *= d * intensity;
     
     fragColor = vec4(col, 1.0);
 }</textarea>
       </div>
 
-      <div id="cards-container">
-        <div id="cards-slider"></div>
+      <!-- Shader Cards -->
+      <div id="cards-container"
+        class="bg-[#252526] border-t border-[#333] py-3 overflow-x-auto overflow-y-hidden whitespace-nowrap">
+        <div id="cards-slider" class="inline-flex gap-3 px-3"></div>
       </div>
     </div>
 
-    <div id="viewer-panel">
-      <div id="canvas-container">
-        <canvas id="canvas"></canvas>
-        <canvas id="grid-canvas"></canvas>
-      </div>
-      <div id="info">
-        <div>모드: <span id="mode-info">단일</span></div>
-        <div>FPS: <span id="fps-counter">0</span></div>
-        <div>시간: <span id="time-counter">0.00</span>s</div>
-        <div>해상도: <span id="resolution-info">1920×1080</span></div>
-      </div>
-
-      <div id="params-panel">
-        <div class="params-header">
-          <span class="params-title">쉐이더 파라미터</span>
-          <button class="params-toggle" onclick="toggleParamsPanel()">−</button>
+    <!-- Viewer Panel -->
+    <div id="viewer-panel" class="w-1/2 flex flex-col bg-[#2d2d30]">
+      <!-- Preview Section (상단 50%) -->
+      <div class="h-2/5 p-4 flex items-center justify-center relative overflow-hidden border-b border-[#333]">
+        <div id="canvas-container" class="w-full h-full flex items-center justify-center">
+          <canvas id="canvas" class="max-w-full max-h-full object-contain"></canvas>
+          <canvas id="grid-canvas" class="max-w-full max-h-full object-contain hidden"></canvas>
         </div>
-        <div id="params-content"></div>
+
+        <!-- Info Panel -->
+        <div id="info" class="absolute top-2.5 left-2.5 bg-black/70 px-3 py-2 rounded text-xs">
+          <div>모드: <span id="mode-info">단일</span></div>
+          <div>FPS: <span id="fps-counter">0</span></div>
+          <div>시간: <span id="time-counter">0.00</span>s</div>
+          <div>해상도: <span id="resolution-info">1920×1080</span></div>
+        </div>
+
+        <!-- Error Panel -->
+        <div id="error"
+          class="hidden absolute bottom-2.5 left-2.5 right-2.5 bg-red-600/90 text-white p-3 rounded text-xs max-h-[150px] overflow-y-auto custom-scrollbar">
+        </div>
       </div>
 
-      <div id="error"></div>
+      <!-- Parameters Section (하단 50%) -->
+      <div class="h-3/5 bg-[#252526] overflow-y-scroll custom-scrollbar">
+        <div id="params-panel" class="p-4">
+          <div class="flex justify-between items-start mb-3 pb-2 border-b border-[#3c3c3c]">
+            <span class="text-sm font-bold text-[#4ec9b0]">쉐이더 파라미터</span>
+            <button class="params-toggle bg-[#3c3c3c] hover:bg-[#4c4c4c] text-[#d4d4d4] px-2 py-1 rounded text-xs"
+              onclick="toggleParamsPanel()">−</button>
+          </div>
+          <div id="params-content" class="">
+            <div class="text-xs text-gray-400 text-center py-8">파라미터가 없습니다</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <script>
-    const canvas = document.getElementById('canvas');
-    const gridCanvas = document.getElementById('grid-canvas');
-    const gl = canvas.getContext('webgl2');
-    const gridGl = gridCanvas.getContext('webgl2');
-
-    if (!gl || !gridGl) {
-      alert('WebGL 2.0을 지원하지 않는 브라우저입니다. 최신 브라우저를 사용해주세요.');
-      throw new Error('WebGL 2.0 not supported');
-    }
-
-    const shaderCode = document.getElementById('shader-code');
-    const errorDiv = document.getElementById('error');
-    const fpsCounter = document.getElementById('fps-counter');
-    const timeCounter = document.getElementById('time-counter');
-    const resolutionInfo = document.getElementById('resolution-info');
-    const modeInfo = document.getElementById('mode-info');
-
-    let program = null;
-    let gridProgram = null;
-    let startTime = Date.now();
-    let frameCount = 0;
-    let lastFpsTime = Date.now();
-    let currentFps = 0;
-
-    // 그리드 모드
-    let isGridMode = false;
-    let gridCols = 3;
-    let gridRows = 3;
-    let loopDuration = 3.0;
-    let playbackSpeed = 1.0;
-    let loopMode = 'repeat'; // 'repeat' or 'pingpong'
-    let cellTimeOffsets = [];
-
-    // 녹화 관련 변수
-    let mediaRecorder = null;
-    let recordedChunks = [];
-    let isRecording = false;
-    let recordingStartTime = 0;
-    let recordingTargetDuration = 0;
-    let autoStopEnabled = false;
-
-    // 파라미터 관리
-    let shaderParams = {};
-    let paramUniforms = {};
-    let paramsPanelMinimized = false;
-
-    // 기본 해상도 설정
-    function setResolution(width, height) {
-      canvas.width = width;
-      canvas.height = height;
-      gridCanvas.width = width;
-      gridCanvas.height = height;
-      resolutionInfo.textContent = `${width}×${height}`;
-      gl.viewport(0, 0, width, height);
-      gridGl.viewport(0, 0, width, height);
-    }
-
-    setResolution(1920, 1080);
-
-    // Vertex Shader
-    const vertexShaderSource = `#version 300 es
-            in vec2 position;
-            void main() {
-                gl_Position = vec4(position, 0.0, 1.0);
-            }
-        `;
-
-    // Fragment Shader 빌드
-    function buildFragmentShader(userCode, forGrid = false) {
-      const offsetUniform = forGrid ? 'uniform vec2 iOffset;' : '';
-      const fragCoordAdjust = forGrid ? 'gl_FragCoord.xy - iOffset' : 'gl_FragCoord.xy';
-
-      if (userCode.includes('void mainImage')) {
-        return `#version 300 es
-                    precision highp float;
-                    uniform vec2 iResolution;
-                    uniform float iTime;
-                    uniform vec4 iMouse;
-                    uniform int iFrame;
-                    ${offsetUniform}
-                    
-                    ${generateParamUniforms()}
-                    
-                    out vec4 fragColor;
-                    
-                    ${userCode}
-                    
-                    void main() {
-                        mainImage(fragColor, ${fragCoordAdjust});
-                    }
-                `;
-      }
-
-      if (userCode.includes('void main()')) {
-        if (!userCode.includes('#version 300 es')) {
-          return `#version 300 es\n${offsetUniform}\n${generateParamUniforms()}\n${userCode}`;
-        }
-        return userCode;
-      }
-
-      return `#version 300 es
-                precision highp float;
-                uniform vec2 iResolution;
-                uniform float iTime;
-                uniform vec4 iMouse;
-                uniform int iFrame;
-                ${offsetUniform}
-                
-                ${generateParamUniforms()}
-                
-                out vec4 fragColor;
-                
-                ${userCode}
-            `;
-    }
-
-    function generateParamUniforms() {
-      return Object.keys(shaderParams).map(name => {
-        return `uniform float ${name};`;
-      }).join('\n');
-    }
-
-    function parseParameters(code) {
-      const params = {};
-      const regex = /#pragma\s+param\s+(\w+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)(?:\s+([-\d.]+))?/g;
-      let match;
-
-      while ((match = regex.exec(code)) !== null) {
-        const [, name, min, max, defaultVal, step] = match;
-        params[name] = {
-          name: name,
-          min: parseFloat(min),
-          max: parseFloat(max),
-          default: parseFloat(defaultVal),
-          value: parseFloat(defaultVal),
-          step: step ? parseFloat(step) : (parseFloat(max) - parseFloat(min)) / 100
-        };
-      }
-
-      return params;
-    }
-
-    function updateParameterUI() {
-      const panel = document.getElementById('params-panel');
-      const content = document.getElementById('params-content');
-      shaderParams = parseParameters(shaderCode.value);
-
-      if (Object.keys(shaderParams).length === 0) {
-        panel.classList.remove('has-params');
-        content.innerHTML = '';
-        return;
-      }
-
-      panel.classList.add('has-params');
-      content.innerHTML = Object.keys(shaderParams).map(name => {
-        const p = shaderParams[name];
-        return `
-                    <div class="param-control">
-                        <div class="param-header">
-                            <span class="param-label">${name}</span>
-                            <span class="param-value-display" id="value-${name}">${p.value.toFixed(3)}</span>
-                        </div>
-                        <div class="param-slider-container">
-                            <input type="range" 
-                                   class="param-slider" 
-                                   id="slider-${name}"
-                                   min="${p.min}" 
-                                   max="${p.max}" 
-                                   step="${p.step}" 
-                                   value="${p.value}">
-                            <input type="number" 
-                                   class="param-input-small" 
-                                   id="input-${name}"
-                                   min="${p.min}" 
-                                   max="${p.max}" 
-                                   step="${p.step}" 
-                                   value="${p.value}">
-                            <button class="param-reset-btn" onclick="resetParam('${name}')">↺</button>
-                        </div>
-                        <div class="param-limits">
-                            <span>${p.min}</span>
-                            <span>${p.max}</span>
-                        </div>
-                    </div>
-                `;
-      }).join('');
-
-      Object.keys(shaderParams).forEach(name => {
-        const slider = document.getElementById(`slider-${name}`);
-        const input = document.getElementById(`input-${name}`);
-        const display = document.getElementById(`value-${name}`);
-
-        const updateValue = (value) => {
-          value = parseFloat(value);
-          if (!isNaN(value)) {
-            const p = shaderParams[name];
-            value = Math.max(p.min, Math.min(p.max, value));
-            shaderParams[name].value = value;
-            slider.value = value;
-            input.value = value;
-            display.textContent = value.toFixed(3);
-          }
-        };
-
-        slider.addEventListener('input', (e) => updateValue(e.target.value));
-        input.addEventListener('input', (e) => updateValue(e.target.value));
-      });
-    }
-
-    function resetParam(name) {
-      if (shaderParams[name]) {
-        const defaultVal = shaderParams[name].default;
-        shaderParams[name].value = defaultVal;
-
-        const slider = document.getElementById(`slider-${name}`);
-        const input = document.getElementById(`input-${name}`);
-        const display = document.getElementById(`value-${name}`);
-
-        if (slider) slider.value = defaultVal;
-        if (input) input.value = defaultVal;
-        if (display) display.textContent = defaultVal.toFixed(3);
-      }
-    }
-
-    function toggleParamsPanel() {
-      const panel = document.getElementById('params-panel');
-      const content = document.getElementById('params-content');
-      const toggleBtn = document.querySelector('.params-toggle');
-
-      if (paramsPanelMinimized) {
-        content.style.display = 'block';
-        toggleBtn.textContent = '−';
-        paramsPanelMinimized = false;
-      } else {
-        content.style.display = 'none';
-        toggleBtn.textContent = '+';
-        paramsPanelMinimized = true;
-      }
-    }
-
-    function compileShader(source, type, context = gl) {
-      const shader = context.createShader(type);
-      context.shaderSource(shader, source);
-      context.compileShader(shader);
-
-      if (!context.getShaderParameter(shader, context.COMPILE_STATUS)) {
-        const error = context.getShaderInfoLog(shader);
-        context.deleteShader(shader);
-        throw new Error(error);
-      }
-
-      return shader;
-    }
-
-    function compileShaderForPreview(source, type, context) {
-      if (!context) return null;
-
-      try {
-        const shader = context.createShader(type);
-        context.shaderSource(shader, source);
-        context.compileShader(shader);
-
-        if (!context.getShaderParameter(shader, context.COMPILE_STATUS)) {
-          context.deleteShader(shader);
-          return null;
-        }
-
-        return shader;
-      } catch (e) {
-        return null;
-      }
-    }
-
-    function createProgram(userFragmentCode, context = gl, forGrid = false) {
-      const vertexShader = compileShader(vertexShaderSource, context.VERTEX_SHADER, context);
-      const fragmentShader = compileShader(
-        buildFragmentShader(userFragmentCode, forGrid),
-        context.FRAGMENT_SHADER,
-        context
-      );
-
-      const newProgram = context.createProgram();
-      context.attachShader(newProgram, vertexShader);
-      context.attachShader(newProgram, fragmentShader);
-      context.linkProgram(newProgram);
-
-      if (!context.getProgramParameter(newProgram, context.LINK_STATUS)) {
-        const error = context.getProgramInfoLog(newProgram);
-        context.deleteProgram(newProgram);
-        throw new Error(error);
-      }
-
-      return newProgram;
-    }
-
-    // 버퍼 생성
-    const vertices = new Float32Array([
-      -1, -1,
-      3, -1,
-      -1, 3
-    ]);
-
-    const buffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
-
-    const gridBuffer = gridGl.createBuffer();
-    gridGl.bindBuffer(gridGl.ARRAY_BUFFER, gridBuffer);
-    gridGl.bufferData(gridGl.ARRAY_BUFFER, vertices, gridGl.STATIC_DRAW);
-
-    // 마우스 추적
-    let mouseX = 0,
-      mouseY = 0;
-    let mouseDown = false;
-
-    canvas.addEventListener('mousemove', (e) => {
-      const rect = canvas.getBoundingClientRect();
-      mouseX = e.clientX - rect.left;
-      mouseY = canvas.height - (e.clientY - rect.top);
-    });
-
-    canvas.addEventListener('mousedown', () => mouseDown = true);
-    canvas.addEventListener('mouseup', () => mouseDown = false);
-
-    // 그리드 시간 오프셋 생성
-    function generateTimeOffsets() {
-      const mode = document.getElementById('offset-mode').value;
-      const totalCells = gridCols * gridRows;
-      cellTimeOffsets = [];
-
-      if (mode === 'random') {
-        const possibleOffsets = [0, 1, 2];
-        for (let i = 0; i < totalCells; i++) {
-          cellTimeOffsets.push(possibleOffsets[Math.floor(Math.random() * possibleOffsets.length)]);
-        }
-      } else if (mode === 'sequential') {
-        for (let i = 0; i < totalCells; i++) {
-          cellTimeOffsets.push((i % 3));
-        }
-      } else if (mode === 'manual') {
-        // 수동 모드에서는 기존 값 유지 또는 0으로 초기화
-        for (let i = 0; i < totalCells; i++) {
-          cellTimeOffsets.push(cellTimeOffsets[i] || 0);
-        }
-      } else {
-        for (let i = 0; i < totalCells; i++) {
-          cellTimeOffsets.push(0);
-        }
-      }
-
-      updateCellOffsetInputs();
-    }
-
-    // 셀 오프셋 입력 UI 업데이트
-    function updateCellOffsetInputs() {
-      const mode = document.getElementById('offset-mode').value;
-      const container = document.getElementById('cell-offsets-container');
-      const grid = document.getElementById('cell-offsets-grid');
-
-      if (mode === 'manual') {
-        container.style.display = 'block';
-        grid.innerHTML = '';
-
-        // 그리드와 동일한 레이아웃으로 설정
-        grid.style.gridTemplateColumns = `repeat(${gridCols}, 1fr)`;
-        grid.style.gridTemplateRows = `repeat(${gridRows}, 1fr)`;
-
-        // 상단부터 하단으로, 좌측부터 우측으로 (실제 그리드와 동일)
-        for (let row = gridRows - 1; row >= 0; row--) {
-          for (let col = 0; col < gridCols; col++) {
-            const index = row * gridCols + col;
-
-            const item = document.createElement('div');
-            item.className = 'cell-offset-item';
-            item.innerHTML = `
-                            <label class="cell-offset-label">[${row},${col}]</label>
-                            <input type="number" 
-                                   class="cell-offset-input" 
-                                   id="cell-offset-${index}"
-                                   value="${cellTimeOffsets[index].toFixed(2)}" 
-                                   step="0.1"
-                                   min="0"
-                                   max="${loopDuration}">
-                        `;
-            grid.appendChild(item);
-
-            // 이벤트 리스너 추가
-            const input = item.querySelector('input');
-            input.addEventListener('input', (e) => {
-              cellTimeOffsets[index] = parseFloat(e.target.value) || 0;
-            });
-          }
-        }
-      } else {
-        container.style.display = 'none';
-      }
-    }
-
-    // LocalStorage
-    const STORAGE_KEY = 'shader-codes';
-    let currentCardId = null;
-
-    let animationId = null;
-
-    function render() {
-      const currentTime = (Date.now() - startTime) / 1000.0;
-
-      // 자동 녹화 중지 체크
-      if (isRecording && autoStopEnabled) {
-        const recordingElapsed = currentTime - recordingStartTime;
-        if (recordingElapsed >= recordingTargetDuration) {
-          stopRecording();
-        }
-
-        document.getElementById('record-status').textContent =
-          `녹화 중... (${recordingElapsed.toFixed(1)}s / ${recordingTargetDuration.toFixed(1)}s)`;
-      }
-
-      if (isGridMode && gridProgram) {
-        renderGrid(currentTime);
-      } else if (program) {
-        renderSingle(currentTime);
-      }
-
-      // FPS 계산
-      frameCount++;
-      const now = Date.now();
-      if (now - lastFpsTime >= 1000) {
-        currentFps = frameCount;
-        fpsCounter.textContent = currentFps;
-        frameCount = 0;
-        lastFpsTime = now;
-      }
-
-      timeCounter.textContent = currentTime.toFixed(2);
-
-      animationId = requestAnimationFrame(render);
-    }
-
-    function renderSingle(currentTime) {
-      gl.useProgram(program);
-
-      const iResolutionLoc = gl.getUniformLocation(program, 'iResolution');
-      const iTimeLoc = gl.getUniformLocation(program, 'iTime');
-      const iMouseLoc = gl.getUniformLocation(program, 'iMouse');
-      const iFrameLoc = gl.getUniformLocation(program, 'iFrame');
-
-      gl.uniform2f(iResolutionLoc, canvas.width, canvas.height);
-      gl.uniform1f(iTimeLoc, currentTime);
-      gl.uniform4f(iMouseLoc, mouseX, mouseY, mouseDown ? 1 : 0, 0);
-      gl.uniform1i(iFrameLoc, frameCount);
-
-      Object.keys(shaderParams).forEach(name => {
-        const loc = gl.getUniformLocation(program, name);
-        if (loc !== null) {
-          gl.uniform1f(loc, shaderParams[name].value);
-        }
-      });
-
-      const positionLoc = gl.getAttribLocation(program, 'position');
-      gl.enableVertexAttribArray(positionLoc);
-      gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
-
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
-    }
-
-    function renderGrid(currentTime) {
-      gridGl.useProgram(gridProgram);
-
-      const cellWidth = gridCanvas.width / gridCols;
-      const cellHeight = gridCanvas.height / gridRows;
-
-      gridGl.clearColor(0, 0, 0, 1);
-      gridGl.clear(gridGl.COLOR_BUFFER_BIT);
-
-      const iResolutionLoc = gridGl.getUniformLocation(gridProgram, 'iResolution');
-      const iTimeLoc = gridGl.getUniformLocation(gridProgram, 'iTime');
-      const iMouseLoc = gridGl.getUniformLocation(gridProgram, 'iMouse');
-      const iFrameLoc = gridGl.getUniformLocation(gridProgram, 'iFrame');
-      const iOffsetLoc = gridGl.getUniformLocation(gridProgram, 'iOffset');
-
-      const positionLoc = gridGl.getAttribLocation(gridProgram, 'position');
-      gridGl.enableVertexAttribArray(positionLoc);
-      gridGl.vertexAttribPointer(positionLoc, 2, gridGl.FLOAT, false, 0, 0);
-
-      let cellIndex = 0;
-      for (let row = 0; row < gridRows; row++) {
-        for (let col = 0; col < gridCols; col++) {
-          const x = col * cellWidth;
-          const y = row * cellHeight;
-
-          gridGl.viewport(x, y, cellWidth, cellHeight);
-          gridGl.scissor(x, y, cellWidth, cellHeight);
-          gridGl.enable(gridGl.SCISSOR_TEST);
-
-          const offset = cellTimeOffsets[cellIndex] || 0;
-          const adjustedTime = (currentTime + offset) * playbackSpeed;
-
-          let loopTime;
-          if (loopMode === 'pingpong') {
-            // 핑퐁 모드: 0 -> duration -> 0 으로 왕복
-            const cycleTime = adjustedTime % (loopDuration * 2);
-            if (cycleTime < loopDuration) {
-              loopTime = cycleTime; // 순방향
-            } else {
-              loopTime = loopDuration * 2 - cycleTime; // 역방향
-            }
-          } else {
-            // 반복 모드: 0 -> duration, 다시 0부터
-            loopTime = adjustedTime % loopDuration;
-          }
-
-          // 각 셀이 독립적인 화면으로 보이도록 셀 크기를 해상도로 전달
-          gridGl.uniform2f(iResolutionLoc, cellWidth, cellHeight);
-          gridGl.uniform1f(iTimeLoc, loopTime);
-          gridGl.uniform4f(iMouseLoc, 0, 0, 0, 0);
-          gridGl.uniform1i(iFrameLoc, frameCount);
-          // 각 셀의 시작 위치를 오프셋으로 전달
-          if (iOffsetLoc !== null) {
-            gridGl.uniform2f(iOffsetLoc, x, y);
-          }
-
-          Object.keys(shaderParams).forEach(name => {
-            const loc = gridGl.getUniformLocation(gridProgram, name);
-            if (loc !== null) {
-              gridGl.uniform1f(loc, shaderParams[name].value);
-            }
-          });
-
-          gridGl.drawArrays(gridGl.TRIANGLES, 0, 3);
-
-          cellIndex++;
-        }
-      }
-
-      gridGl.disable(gridGl.SCISSOR_TEST);
-      gridGl.viewport(0, 0, gridCanvas.width, gridCanvas.height);
-    }
-
-    shaderCode.addEventListener('keydown', (e) => {
-      if (e.ctrlKey && e.key === 'Enter') {
-        e.preventDefault();
-        compileAndRun();
-      }
-
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        const start = shaderCode.selectionStart;
-        const end = shaderCode.selectionEnd;
-        shaderCode.value = shaderCode.value.substring(0, start) + '    ' + shaderCode.value.substring(end);
-        shaderCode.selectionStart = shaderCode.selectionEnd = start + 4;
-      }
-    });
-
-    function getSavedCodes() {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        return saved ? JSON.parse(saved) : [];
-      } catch (e) {
-        console.warn('LocalStorage 읽기 오류:', e);
-        return [];
-      }
-    }
-
-    function setSavedCodes(codes) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(codes));
-      } catch (e) {
-        console.warn('LocalStorage 저장 오류:', e);
-      }
-    }
-
-    function generateCardName() {
-      const now = new Date();
-      return `Shader ${now.getMonth() + 1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
-    }
-
-    function compileAndRun() {
-      try {
-        updateParameterUI();
-        const newProgram = createProgram(shaderCode.value, gl, false);
-        const newGridProgram = createProgram(shaderCode.value, gridGl, true);
-
-        if (program) gl.deleteProgram(program);
-        if (gridProgram) gridGl.deleteProgram(gridProgram);
-
-        program = newProgram;
-        gridProgram = newGridProgram;
-        errorDiv.style.display = 'none';
-
-        if (!animationId) {
-          render();
-        }
-
-        autoSaveCurrentCode();
-
-      } catch (error) {
-        errorDiv.textContent = '쉐이더 컴파일 오류:\n' + error.message;
-        errorDiv.style.display = 'block';
-      }
-    }
-
-    function autoSaveCurrentCode() {
-      const codes = getSavedCodes();
-      const code = shaderCode.value;
-
-      if (currentCardId) {
-        const index = codes.findIndex(c => c.id === currentCardId);
-        if (index !== -1) {
-          codes[index].code = code;
-          codes[index].date = new Date().toISOString();
-          setSavedCodes(codes);
-          renderCards();
-          return;
-        }
-      }
-
-      const newCode = {
-        id: Date.now(),
-        name: generateCardName(),
-        code: code,
-        date: new Date().toISOString()
-      };
-
-      codes.push(newCode);
-      setSavedCodes(codes);
-      currentCardId = newCode.id;
-      renderCards();
-    }
-
-    function renderCards() {
-      const codes = getSavedCodes();
-      const slider = document.getElementById('cards-slider');
-
-      codes.sort((a, b) => b.id - a.id);
-
-      slider.innerHTML = codes.map(item => `
-                <div class="shader-card ${item.id === currentCardId ? 'active' : ''}" onclick="loadCard(${item.id})">
-                    <button class="card-delete" onclick="event.stopPropagation(); deleteCard(${item.id})">×</button>
-                    <div class="card-preview" id="preview-${item.id}"></div>
-                    <div class="card-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
-                    <div class="card-date">${formatDate(item.date)}</div>
-                </div>
-            `).join('') + `
-                <div class="shader-card add-card" onclick="createNewCard()">
-                    <div class="add-icon">+</div>
-                    <div>새 쉐이더</div>
-                </div>
-            `;
-
-      setTimeout(() => {
-        codes.forEach(item => {
-          const previewDiv = document.getElementById(`preview-${item.id}`);
-          if (previewDiv && !previewDiv.querySelector('canvas')) {
-            createPreviewCanvas(previewDiv, item.code);
-          }
-        });
-      }, 0);
-    }
-
-    function createPreviewCanvas(container, code) {
-      const canvas = document.createElement('canvas');
-      canvas.width = 160;
-      canvas.height = 60;
-      container.appendChild(canvas);
-
-      try {
-        const ctx = canvas.getContext('webgl2');
-        if (!ctx) return;
-
-        const vertShader = compileShaderForPreview(`#version 300 es
-                    in vec2 position;
-                    void main() {
-                        gl_Position = vec4(position, 0.0, 1.0);
-                    }
-                `, ctx.VERTEX_SHADER, ctx);
-
-        if (!vertShader) return;
-
-        const fragShader = compileShaderForPreview(
-          buildFragmentShader(code),
-          ctx.FRAGMENT_SHADER,
-          ctx
-        );
-
-        if (!fragShader) return;
-
-        const prog = ctx.createProgram();
-        ctx.attachShader(prog, vertShader);
-        ctx.attachShader(prog, fragShader);
-        ctx.linkProgram(prog);
-
-        if (!ctx.getProgramParameter(prog, ctx.LINK_STATUS)) return;
-
-        const buf = ctx.createBuffer();
-        ctx.bindBuffer(ctx.ARRAY_BUFFER, buf);
-        ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), ctx.STATIC_DRAW);
-
-        ctx.useProgram(prog);
-        ctx.uniform2f(ctx.getUniformLocation(prog, 'iResolution'), 160, 60);
-        ctx.uniform1f(ctx.getUniformLocation(prog, 'iTime'), 0);
-        ctx.uniform4f(ctx.getUniformLocation(prog, 'iMouse'), 0, 0, 0, 0);
-        ctx.uniform1i(ctx.getUniformLocation(prog, 'iFrame'), 0);
-
-        const posLoc = ctx.getAttribLocation(prog, 'position');
-        ctx.enableVertexAttribArray(posLoc);
-        ctx.vertexAttribPointer(posLoc, 2, ctx.FLOAT, false, 0, 0);
-
-        ctx.viewport(0, 0, 160, 60);
-        ctx.drawArrays(ctx.TRIANGLES, 0, 3);
-      } catch (e) {
-        console.warn('Preview generation failed:', e);
-      }
-    }
-
-    function loadCard(id) {
-      const codes = getSavedCodes();
-      const code = codes.find(c => c.id === id);
-
-      if (code) {
-        shaderCode.value = code.code;
-        currentCardId = id;
-        renderCards();
-        compileAndRun();
-      }
-    }
-
-    function deleteCard(id) {
-      if (!confirm('이 쉐이더를 삭제하시겠습니까?')) return;
-
-      const codes = getSavedCodes();
-      const filtered = codes.filter(c => c.id !== id);
-      setSavedCodes(filtered);
-
-      if (currentCardId === id) {
-        if (filtered.length > 0) {
-          loadCard(filtered[0].id);
-        } else {
-          currentCardId = null;
-          shaderCode.value = '// 새 쉐이더를 작성하세요';
-        }
-      }
-
-      renderCards();
-    }
-
-    function createNewCard() {
-      const newCode = {
-        id: Date.now(),
-        name: generateCardName(),
-        code: `// WebGL 2.0 GLSL 300 es 지원
-                
-#pragma param speed 0.0 5.0 1.0 0.1
-#pragma param radius 0.1 1.0 0.5 0.01
-#pragma param intensity 0.0 2.0 1.0 0.05
-
-void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-    vec2 uv = fragCoord / iResolution.xy;
-    vec2 p = (2.0 * fragCoord - iResolution.xy) / iResolution.y;
-    
-    vec3 col = 0.5 + 0.5 * cos(iTime * speed + uv.xyx + vec3(0, 2, 4));
-    
-    float d = length(p) - radius;
-    d = sin(d * 8.0 + iTime * speed) / 8.0;
-    d = abs(d);
-    d = 0.02 / d;
-    col *= d * intensity;
-    
-    fragColor = vec4(col, 1.0);
-}
-                `,
-        date: new Date().toISOString()
-      };
-
-      const codes = getSavedCodes();
-      codes.push(newCode);
-      setSavedCodes(codes);
-
-      loadCard(newCode.id);
-    }
-
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
-    function formatDate(isoString) {
-      const date = new Date(isoString);
-      const now = new Date();
-      const diff = now - date;
-
-      const minutes = Math.floor(diff / 60000);
-      const hours = Math.floor(diff / 3600000);
-      const days = Math.floor(diff / 86400000);
-
-      if (minutes < 1) return '방금 전';
-      if (minutes < 60) return `${minutes}분 전`;
-      if (hours < 24) return `${hours}시간 전`;
-      if (days < 7) return `${days}일 전`;
-
-      return date.toLocaleDateString('ko-KR', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    }
-
-    // 그리드 모드 토글
-    document.getElementById('toggle-grid-btn').addEventListener('click', () => {
-      isGridMode = !isGridMode;
-      const btn = document.getElementById('toggle-grid-btn');
-      const gridSettings = document.getElementById('grid-settings');
-
-      if (isGridMode) {
-        btn.classList.add('active');
-        btn.textContent = '단일 모드';
-        canvas.style.display = 'none';
-        gridCanvas.style.display = 'block';
-        gridSettings.style.display = 'block';
-        modeInfo.textContent = `그리드 ${gridCols}×${gridRows}`;
-
-        gridCols = parseInt(document.getElementById('grid-cols').value);
-        gridRows = parseInt(document.getElementById('grid-rows').value);
-        loopDuration = parseFloat(document.getElementById('loop-duration').value);
-        generateTimeOffsets();
-      } else {
-        btn.classList.remove('active');
-        btn.textContent = '그리드 모드';
-        canvas.style.display = 'block';
-        gridCanvas.style.display = 'none';
-        gridSettings.style.display = 'none';
-        modeInfo.textContent = '단일';
-      }
-    });
-
-    // 그리드 설정 변경
-    document.getElementById('grid-cols').addEventListener('change', (e) => {
-      gridCols = parseInt(e.target.value);
-      modeInfo.textContent = `그리드 ${gridCols}×${gridRows}`;
-      generateTimeOffsets();
-    });
-
-    document.getElementById('grid-rows').addEventListener('change', (e) => {
-      gridRows = parseInt(e.target.value);
-      modeInfo.textContent = `그리드 ${gridCols}×${gridRows}`;
-      generateTimeOffsets();
-    });
-
-    document.getElementById('loop-duration').addEventListener('change', (e) => {
-      loopDuration = parseFloat(e.target.value);
-    });
-
-    document.getElementById('playback-speed').addEventListener('input', (e) => {
-      playbackSpeed = parseFloat(e.target.value) || 1.0;
-    });
-
-    document.getElementById('loop-mode').addEventListener('change', (e) => {
-      loopMode = e.target.value;
-    });
-
-    document.getElementById('offset-mode').addEventListener('change', () => {
-      generateTimeOffsets();
-    });
-
-    document.getElementById('regenerate-offsets-btn').addEventListener('click', () => {
-      generateTimeOffsets();
-    });
-
-    // 녹화 기능
-    document.getElementById('record-btn').addEventListener('click', () => {
-      if (!isRecording) {
-        const startFrom = parseFloat(document.getElementById('record-start').value);
-        startRecordingAt(startFrom);
-      } else {
-        stopRecording();
-      }
-    });
-
-    document.getElementById('record-reset-btn').addEventListener('click', () => {
-      startTime = Date.now();
-      frameCount = 0;
-      startRecordingAt(0);
-    });
-
-    function startRecordingAt(startFrom) {
-      const currentTime = (Date.now() - startTime) / 1000.0;
-
-      autoStopEnabled = document.getElementById('auto-stop').checked;
-      recordingTargetDuration = parseFloat(document.getElementById('record-duration').value);
-
-      if (Math.abs(currentTime - startFrom) > 0.1) {
-        startTime = Date.now() - (startFrom * 1000);
-        document.getElementById('record-status').textContent = `${startFrom.toFixed(1)}초로 이동 중...`;
-
-        setTimeout(() => {
-          startRecording();
-        }, 100);
-      } else {
-        startRecording();
-      }
-    }
-
-    function startRecording() {
-      const fps = parseInt(document.getElementById('fps').value);
-      const targetCanvas = isGridMode ? gridCanvas : canvas;
-      const stream = targetCanvas.captureStream(fps);
-
-      recordedChunks = [];
-      recordingStartTime = (Date.now() - startTime) / 1000.0;
-
-      let options = {
-        mimeType: 'video/mp4;codecs=avc1',
-        videoBitsPerSecond: 100000000 // 25Mbps -> 200Mbps로 증가
-      };
-
-      let fileExtension = 'mp4';
-      let mimeType = 'video/mp4';
-
-      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-        options.mimeType = 'video/webm;codecs=vp9';
-        options.videoBitsPerSecond = 100000000; // WebM도 동일하게 증가
-        fileExtension = 'webm';
-        mimeType = 'video/webm';
-
-        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-          options.mimeType = 'video/webm;codecs=vp8';
-          options.videoBitsPerSecond = 100000000;
-        }
-      }
-
-      mediaRecorder = new MediaRecorder(stream, options);
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          recordedChunks.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(recordedChunks, {
-          type: mimeType
-        });
-        const url = URL.createObjectURL(blob);
-
-        const downloadBtn = document.getElementById('download-btn');
-        downloadBtn.style.display = 'inline-block';
-        downloadBtn.onclick = () => {
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `shader-${isGridMode ? 'grid-' : ''}recording-${Date.now()}.${fileExtension}`;
-          a.click();
-        };
-
-        document.getElementById('record-status').textContent = '녹화 완료!';
-        setTimeout(() => {
-          document.getElementById('record-status').textContent = '';
-        }, 3000);
-      };
-
-      mediaRecorder.start();
-      isRecording = true;
-
-      const recordBtn = document.getElementById('record-btn');
-      recordBtn.textContent = '녹화 중지';
-      recordBtn.classList.add('recording');
-
-      if (!autoStopEnabled) {
-        document.getElementById('record-status').textContent = '녹화 중...';
-      }
-    }
-
-    function stopRecording() {
-      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-        mediaRecorder.stop();
-      }
-
-      isRecording = false;
-      autoStopEnabled = false;
-
-      const recordBtn = document.getElementById('record-btn');
-      recordBtn.textContent = '녹화 시작';
-      recordBtn.classList.remove('recording');
-    }
-
-    document.getElementById('compile-btn').addEventListener('click', compileAndRun);
-
-    document.getElementById('reset-btn').addEventListener('click', () => {
-      startTime = Date.now();
-      frameCount = 0;
-    });
-
-    document.getElementById('apply-res-btn').addEventListener('click', () => {
-      const width = parseInt(document.getElementById('width').value);
-      const height = parseInt(document.getElementById('height').value);
-      setResolution(width, height);
-    });
-
-    // 초기화
-    generateTimeOffsets();
-    renderCards();
-
-    const savedCodes = getSavedCodes();
-    if (savedCodes.length > 0) {
-      const lastCode = savedCodes[savedCodes.length - 1];
-      if (lastCode && lastCode.id) {
-        loadCard(lastCode.id);
-      }
-    } else {
-      compileAndRun();
-    }
-  </script>
+  <script src="shader-viewer.js"></script>
 </body>
 
 </html>
